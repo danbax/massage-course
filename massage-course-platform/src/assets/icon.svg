@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Outer circle for a clean icon background -->
+  <circle cx="32" cy="32" r="30" stroke="#6AAE8B" stroke-width="4" fill="none"/>
+  <!-- Stylized hands representing massage therapy -->
+  <g stroke="#6AAE8B" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left hand -->
+    <path d="M18 38 C18 28, 28 28, 28 38 L28 50 C28 55, 24 58, 20 56 L20 42"/>
+    <!-- Right hand -->
+    <path d="M46 38 C46 28, 36 28, 36 38 L36 50 C36 55, 40 58, 44 56 L44 42"/>
+  </g>
+</svg>

@@ -1,0 +1,474 @@
+import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useCourse } from '../hooks/useCourse'
+import { useLanguage } from '../hooks/useLanguage'
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  VStack,
+  HStack,
+  Button,
+  Icon,
+  Flex
+} from '@chakra-ui/react'
+import { 
+  FaPlay,
+  FaPause,
+  FaArrowLeft,
+  FaCheck,
+  FaArrowRight,
+  FaVolumeUp,
+  FaExpand,
+  FaCompress
+} from 'react-icons/fa'
+import toast from 'react-hot-toast'
+
+const VideoPlayer = () => {
+  const { lessonId } = useParams()
+  const navigate = useNavigate()
+  const { lessons, currentLesson, setCurrentLesson, markLessonComplete, updateWatchProgress } = useCourse()
+  const { t, currentLanguage } = useLanguage()
+  
+  const videoRef = useRef(null)
+  const containerRef = useRef(null)
+  
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [volume, setVolume] = useState(1)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showControls, setShowControls] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const lesson = lessons.find(l => l.id === parseInt(lessonId))
+
+  useEffect(() => {
+    if (lesson) {
+      setCurrentLesson(lesson)
+    }
+  }, [lesson, setCurrentLesson])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration)
+      setIsLoading(false)
+    }
+
+    const handleTimeUpdate = () => {
+      if (!video.duration) return
+      
+      const current = video.currentTime
+      const progressPercent = (current / video.duration) * 100
+      
+      setCurrentTime(current)
+      setProgress(progressPercent)
+      updateWatchProgress(lesson.id, progressPercent)
+      
+      if (progressPercent >= 80 && progressPercent < 85) {
+      }
+    }
+
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleEnded = () => {
+      setIsPlaying(false)
+      if (progress >= 80) {
+        toast.success('Video completed! Ready to mark as finished.')
+      }
+    }
+
+    const handleLoadStart = () => setIsLoading(true)
+    const handleCanPlay = () => setIsLoading(false)
+    const handleLoadedData = () => setIsLoading(false)
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata)
+    video.addEventListener('timeupdate', handleTimeUpdate)
+    video.addEventListener('play', handlePlay)
+    video.addEventListener('pause', handlePause)
+    video.addEventListener('ended', handleEnded)
+    video.addEventListener('loadstart', handleLoadStart)
+    video.addEventListener('canplay', handleCanPlay)
+    video.addEventListener('loadeddata', handleLoadedData)
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      video.removeEventListener('timeupdate', handleTimeUpdate)
+      video.removeEventListener('play', handlePlay)
+      video.removeEventListener('pause', handlePause)
+      video.removeEventListener('ended', handleEnded)
+      video.removeEventListener('loadstart', handleLoadStart)
+      video.removeEventListener('canplay', handleCanPlay)
+      video.removeEventListener('loadeddata', handleLoadedData)
+    }
+  }, [lesson, updateWatchProgress, progress])
+
+  const togglePlay = () => {
+    const video = videoRef.current
+    if (!video) return
+
+    if (isPlaying) {
+      video.pause()
+    } else {
+      video.play().catch(error => {
+        console.error('Error playing video:', error)
+        toast.error('Unable to play video')
+      })
+    }
+  }
+
+  const handleSeek = (value) => {
+    const video = videoRef.current
+    if (!video || !duration) return
+    
+    const newTime = (value / 100) * duration
+    video.currentTime = newTime
+    setCurrentTime(newTime)
+    setProgress(value)
+  }
+
+  const handleVolumeChange = (value) => {
+    const video = videoRef.current
+    if (!video) return
+    
+    const newVolume = value / 100
+    video.volume = newVolume
+    setVolume(newVolume)
+  }
+
+  const toggleFullscreen = () => {
+    const container = containerRef.current
+    if (!container) return
+
+    if (!isFullscreen) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen()
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      }
+    }
+    setIsFullscreen(!isFullscreen)
+  }
+
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const handleMarkComplete = () => {
+    if (progress >= 80) {
+      markLessonComplete(lesson.id)
+      toast.success('Lesson completed! 🎉')
+    } else {
+      toast.error('Please watch at least 80% of the video to mark as complete')
+    }
+  }
+
+  const handleNextLesson = () => {
+    const currentIndex = lessons.findIndex(l => l.id === lesson.id)
+    const nextLesson = lessons[currentIndex + 1]
+    
+    if (nextLesson) {
+      navigate(`/app/video/${nextLesson.id}`)
+    }
+  }
+
+  if (!lesson) {
+    return (
+      <Container maxW="6xl">
+        <Box textAlign="center" py={20}>
+          <Heading color="gray.500">Lesson not found</Heading>
+          <Button mt={4} onClick={() => navigate('/app/courses')}>
+            Back to Courses
+          </Button>
+        </Box>
+      </Container>
+    )
+  }
+
+  return (
+    <Container maxW="6xl">
+      <VStack spacing={6} align="stretch">
+        <Button
+          leftIcon={<FaArrowLeft />}
+          variant="outline"
+          alignSelf="flex-start"
+          onClick={() => navigate('/app/courses')}
+        >
+          {t('video.backToCourses')}
+        </Button>
+
+        <Box 
+          bg="white"
+          borderRadius="2xl"
+          boxShadow="lg"
+          border="1px solid"
+          borderColor="gray.100"
+          overflow="hidden"
+        >
+          <Box 
+            ref={containerRef}
+            position="relative"
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(isPlaying ? false : true)}
+          >
+            <video
+              ref={videoRef}
+              width="100%"
+              height="500px"
+              poster={lesson.thumbnail}
+              style={{ 
+                objectFit: 'cover',
+                backgroundColor: '#000'
+              }}
+              onError={(e) => {
+                console.error('Video error:', e)
+                toast.error('Error loading video. Please check the file path.')
+                setIsLoading(false)
+              }}
+            >
+              <source src={lesson.videoUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+
+            {isLoading && (
+              <Box
+                position="absolute"
+                top="0"
+                left="0"
+                right="0"
+                bottom="0"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                color="white"
+                textAlign="center"
+                zIndex={997}
+                bg="rgba(0, 0, 0, 0.5)"
+              >
+                <Box bg="rgba(0, 0, 0, 0.8)" px={6} py={4} borderRadius="md">
+                  <Text fontSize="lg">Loading video...</Text>
+                </Box>
+              </Box>
+            )}
+
+            {!isPlaying && !isLoading && (
+              <Box
+                position="absolute"
+                top="0"
+                left="0"
+                right="0"
+                bottom="0"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                zIndex={999}
+                pointerEvents="none"
+              >
+                <Button
+                  onClick={togglePlay}
+                  size="lg"
+                  borderRadius="full"
+                  bg="rgba(255, 255, 255, 0.9)"
+                  color="blue.500"
+                  boxShadow="0 4px 20px rgba(0, 0, 0, 0.3)"
+                  w={20}
+                  h={20}
+                  fontSize="2xl"
+                  _hover={{ 
+                    transform: 'scale(1.1)',
+                    bg: 'white'
+                  }}
+                  transition="all 0.2s"
+                  aria-label="Play video"
+                  pointerEvents="all"
+                  minW="auto"
+                  p={0}
+                >
+                  <Icon as={FaPlay} />
+                </Button>
+              </Box>
+            )}
+
+            <Box
+              position="absolute"
+              bottom={0}
+              left={0}
+              right={0}
+              bg="linear-gradient(transparent, rgba(0, 0, 0, 0.7))"
+              color="white"
+              p={4}
+              opacity={showControls ? 1 : 0}
+              transition="opacity 0.3s"
+              zIndex={998}
+              pointerEvents={showControls ? "all" : "none"}
+            >
+              <VStack spacing={3}>
+                <Box w="full">
+                  <Box
+                    bg="whiteAlpha.300"
+                    h="2"
+                    borderRadius="full"
+                    cursor="pointer"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const clickX = e.clientX - rect.left
+                      const percentage = (clickX / rect.width) * 100
+                      handleSeek(percentage)
+                    }}
+                  >
+                    <Box
+                      bg="blue.400"
+                      h="full"
+                      borderRadius="full"
+                      width={`${progress}%`}
+                      transition="width 0.1s"
+                    />
+                  </Box>
+                </Box>
+
+                <HStack spacing={4} w="full" justify="space-between">
+                  <HStack spacing={3}>
+                    <Button
+                      onClick={togglePlay}
+                      variant="ghost"
+                      color="white"
+                      size="sm"
+                      _hover={{ bg: "whiteAlpha.200" }}
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                      minW="auto"
+                      p={2}
+                    >
+                      <Icon as={isPlaying ? FaPause : FaPlay} />
+                    </Button>
+
+                    <Text fontSize="sm" minW="100px">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </Text>
+                  </HStack>
+
+                  <HStack spacing={3}>
+                    <HStack spacing={2} w="100px">
+                      <Icon as={FaVolumeUp} w={4} h={4} />
+                      <Box
+                        bg="whiteAlpha.300"
+                        h="1"
+                        borderRadius="full"
+                        cursor="pointer"
+                        flex="1"
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          const clickX = e.clientX - rect.left
+                          const percentage = (clickX / rect.width) * 100
+                          handleVolumeChange(percentage)
+                        }}
+                      >
+                        <Box
+                          bg="white"
+                          h="full"
+                          borderRadius="full"
+                          width={`${volume * 100}%`}
+                          transition="width 0.1s"
+                        />
+                      </Box>
+                    </HStack>
+
+                    <Button
+                      onClick={toggleFullscreen}
+                      variant="ghost"
+                      color="white"
+                      size="sm"
+                      _hover={{ bg: "whiteAlpha.200" }}
+                      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                      minW="auto"
+                      p={2}
+                    >
+                      <Icon as={isFullscreen ? FaCompress : FaExpand} />
+                    </Button>
+                  </HStack>
+                </HStack>
+              </VStack>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box
+          bg="white"
+          borderRadius="2xl"
+          boxShadow="lg"
+          border="1px solid"
+          borderColor="gray.100"
+        >
+          <Box p={6}>
+            <Flex justify="space-between" align="start" mb={4} direction={{ base: "column", md: "row" }} gap={4}>
+              <VStack align="start" flex={1} spacing={2}>
+                <Text fontSize="sm" color="blue.600" fontWeight="medium">
+                  {lesson.module}
+                </Text>
+                <Heading size="lg" color="gray.900">
+                  {lesson.title[currentLanguage]}
+                </Heading>
+                <Text color="gray.600" lineHeight="relaxed">
+                  {lesson.description[currentLanguage]}
+                </Text>
+              </VStack>
+              
+              <HStack spacing={3}>
+                <Button
+                  leftIcon={<FaCheck />}
+                  onClick={handleMarkComplete}
+                  isDisabled={progress < 80 || lesson.completed}
+                  colorScheme={lesson.completed ? 'green' : 'blue'}
+                >
+                  {lesson.completed ? 'Completed' : t('course.markComplete')}
+                </Button>
+                
+                <Button
+                  rightIcon={<FaArrowRight />}
+                  variant="outline"
+                  onClick={handleNextLesson}
+                  isDisabled={!lessons[lessons.findIndex(l => l.id === lesson.id) + 1]}
+                >
+                  {t('course.nextLesson')}
+                </Button>
+              </HStack>
+            </Flex>
+
+            <Box>
+              <Flex justify="space-between" align="center" mb={2}>
+                <Text fontSize="sm" color="gray.600">Watch Progress</Text>
+                <Text fontSize="sm" fontWeight="medium">{Math.round(progress)}%</Text>
+              </Flex>
+              <Box bg="gray.200" h="2" borderRadius="full">
+                <Box
+                  bg="blue.500"
+                  h="full"
+                  borderRadius="full"
+                  width={`${progress}%`}
+                  transition="width 0.3s"
+                />
+              </Box>
+              {progress < 80 && (
+                <Text fontSize="xs" color="gray.500" mt={2}>
+                  Watch at least 80% to mark as complete
+                </Text>
+              )}
+            </Box>
+          </Box>
+        </Box>
+      </VStack>
+    </Container>
+  )
+}
+
+export default VideoPlayer
