@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends Model
@@ -62,21 +61,11 @@ class Course extends Model
     }
 
     /**
-     * Get the users enrolled in this course.
+     * Get all users (since all users have access to this course).
      */
-    public function enrolledUsers(): BelongsToMany
+    public function users()
     {
-        return $this->belongsToMany(User::class, 'course_enrollments')
-                    ->withPivot(['enrolled_at', 'completed_at', 'progress_percentage'])
-                    ->withTimestamps();
-    }
-
-    /**
-     * Get the enrollments for this course.
-     */
-    public function enrollments(): HasMany
-    {
-        return $this->hasMany(CourseEnrollment::class);
+        return User::all(); // All users have access to the course
     }
 
     /**
@@ -130,11 +119,11 @@ class Course extends Model
     }
 
     /**
-     * Get the number of enrolled students.
+     * Get the number of total students (all users have access).
      */
     public function getEnrolledStudentsCountAttribute(): int
     {
-        return $this->enrollments()->count();
+        return User::count(); // All users have access to the course
     }
 
     /**

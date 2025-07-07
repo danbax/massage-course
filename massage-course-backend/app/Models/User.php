@@ -5,7 +5,6 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -62,21 +61,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the courses the user is enrolled in.
+     * Get the default course (since all users have access to the same course).
      */
-    public function enrolledCourses(): BelongsToMany
+    public function course()
     {
-        return $this->belongsToMany(Course::class, 'course_enrollments')
-                    ->withPivot(['enrolled_at', 'completed_at', 'progress_percentage'])
-                    ->withTimestamps();
-    }
-
-    /**
-     * Get the user's course enrollments.
-     */
-    public function courseEnrollments(): HasMany
-    {
-        return $this->hasMany(CourseEnrollment::class);
+        return Course::first(); // All users have access to the single course
     }
 
     /**
@@ -112,29 +101,38 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user is enrolled in a course.
+     * Check if the user has access to the course (always true since there's only one course).
      */
-    public function isEnrolledIn(Course $course): bool
+    public function hasAccessToCourse(): bool
     {
-        return $this->enrolledCourses()->where('course_id', $course->id)->exists();
+        return true; // All users have access to the single course
     }
 
     /**
-     * Check if the user has completed a course.
+     * Check if the user has completed the course.
      */
-    public function hasCompletedCourse(Course $course): bool
+    public function hasCompletedCourse(): bool
     {
-        return $this->courseEnrollments()
-                    ->where('course_id', $course->id)
-                    ->whereNotNull('completed_at')
+        $course = $this->course();
+        if (!$course) {
+            return false;
+        }
+        
+        return $this->courseProgress()->where('course_id', $course->id)
+                    ->where('is_completed', true)
                     ->exists();
     }
 
     /**
-     * Get the progress for a specific course.
+     * Get the progress for the default course.
      */
-    public function getProgressForCourse(Course $course): ?UserProgress
+    public function getCourseProgress()
     {
+        $course = $this->course();
+        if (!$course) {
+            return null;
+        }
+        
         return $this->courseProgress()->where('course_id', $course->id)->first();
     }
 

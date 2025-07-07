@@ -79,7 +79,7 @@ class AuthController extends Controller
     public function user(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user()->load(['courseEnrollments.course', 'certificates'])
+            'user' => $request->user()->load(['certificates'])
         ]);
     }
 

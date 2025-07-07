@@ -8,6 +8,7 @@ use App\Models\UserCertificate;
 use App\Models\Certificate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class CertificateService
 {
@@ -178,19 +179,19 @@ class CertificateService
         $generated = 0;
 
         // Find users who completed courses but don't have certificates
-        $completedEnrollments = \DB::table('course_enrollments')
-            ->whereNotNull('completed_at')
+        $completedUsers = DB::table('user_progress')
+            ->where('is_completed', true)
             ->whereNotExists(function ($query) {
-                $query->select(\DB::raw(1))
+                $query->select(DB::raw(1))
                     ->from('user_certificates')
-                    ->whereColumn('user_certificates.user_id', 'course_enrollments.user_id')
-                    ->whereColumn('user_certificates.course_id', 'course_enrollments.course_id');
+                    ->whereColumn('user_certificates.user_id', 'user_progress.user_id')
+                    ->whereColumn('user_certificates.course_id', 'user_progress.course_id');
             })
             ->get();
 
-        foreach ($completedEnrollments as $enrollment) {
-            $user = User::find($enrollment->user_id);
-            $course = Course::find($enrollment->course_id);
+        foreach ($completedUsers as $userProgress) {
+            $user = User::find($userProgress->user_id);
+            $course = Course::find($userProgress->course_id);
 
             if ($user && $course) {
                 $this->generateCertificate($user, $course);
