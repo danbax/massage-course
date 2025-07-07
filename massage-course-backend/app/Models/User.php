@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-// use Laravel\Sanctum\HasApiTokens; // Commented out until Sanctum is properly installed
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable; // HasApiTokens removed until Sanctum is installed
+    use HasFactory, Notifiable, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -142,7 +142,7 @@ class User extends Authenticatable
      */
     public function getIsAdminAttribute(): bool
     {
-        return $this->is_admin === true;
+        return $this->attributes['is_admin'] === true || $this->attributes['is_admin'] === 1;
     }
 
     /**

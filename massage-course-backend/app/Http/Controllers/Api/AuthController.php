@@ -25,6 +25,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Create Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -41,14 +42,15 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            return response()->json([
+                'message' => 'Invalid credentials'
+            ], 401);
         }
 
         $user = User::where('email', $request->email)->first();
         $user->update(['last_login_at' => now()]);
-
+        
+        // Create Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

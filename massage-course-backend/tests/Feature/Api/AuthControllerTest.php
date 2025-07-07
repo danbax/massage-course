@@ -25,15 +25,14 @@ class AuthControllerTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
+                'message',
                 'user' => [
                     'id',
                     'name',
                     'email',
-                    'role',
                     'created_at',
                     'updated_at'
-                ],
-                'token'
+                ]
             ]);
 
         $this->assertDatabaseHas('users', [
@@ -83,13 +82,12 @@ class AuthControllerTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
+                'message',
                 'user' => [
                     'id',
                     'name',
-                    'email',
-                    'role'
-                ],
-                'token'
+                    'email'
+                ]
             ]);
     }
 
@@ -111,11 +109,9 @@ class AuthControllerTest extends TestCase
     public function test_authenticated_user_can_logout()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->postJson('/api/auth/logout');
+        
+        $response = $this->actingAs($user)
+            ->postJson('/api/auth/logout');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -126,11 +122,9 @@ class AuthControllerTest extends TestCase
     public function test_authenticated_user_can_get_user_info()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->getJson('/api/auth/user');
+        
+        $response = $this->actingAs($user)
+            ->getJson('/api/auth/user');
 
         $response->assertStatus(200)
             ->assertJson([

@@ -180,6 +180,100 @@ class PaymentService
     }
 
     /**
+     * Handle webhook from payment provider
+     */
+    public function handleWebhook(string $payload, ?string $signature = null): array
+    {
+        try {
+            $data = json_decode($payload, true);
+            
+            if (!$data || !isset($data['type'])) {
+                Log::warning('Invalid webhook payload received', ['payload' => $payload]);
+                return ['received' => true];
+            }
+
+            $eventType = $data['type'];
+            
+            switch ($eventType) {
+                case 'payment_intent.succeeded':
+                    $this->handleSuccessfulPayment($data);
+                    break;
+                    
+                case 'payment_intent.payment_failed':
+                    $this->handleFailedPayment($data);
+                    break;
+                    
+                default:
+                    Log::info('Unhandled webhook event type', ['type' => $eventType]);
+                    break;
+            }
+
+            return ['received' => true];
+
+        } catch (\Exception $e) {
+            Log::error('Webhook processing failed', [
+                'error' => $e->getMessage(),
+                'payload' => $payload,
+            ]);
+            
+            // Always return success to prevent webhook retries
+            return ['received' => true];
+        }
+    }
+
+    /**
+     * Handle successful payment webhook
+     */
+    private function handleSuccessfulPayment(array $data): void
+    {
+        if (!isset($data['data']['object']['id'])) {
+            return;
+        }
+
+        $paymentIntentId = $data['data']['object']['id'];
+        
+        $payment = Payment::where('provider_transaction_id', $paymentIntentId)->first();
+        
+        if ($payment && $payment->status !== 'succeeded') {
+            $payment->update([
+                'status' => 'succeeded',
+                'processed_at' => now(),
+            ]);
+            
+            Log::info('Payment status updated to succeeded via webhook', [
+                'payment_id' => $payment->id,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+        }
+    }
+
+    /**
+     * Handle failed payment webhook
+     */
+    private function handleFailedPayment(array $data): void
+    {
+        if (!isset($data['data']['object']['id'])) {
+            return;
+        }
+
+        $paymentIntentId = $data['data']['object']['id'];
+        
+        $payment = Payment::where('provider_transaction_id', $paymentIntentId)->first();
+        
+        if ($payment && $payment->status !== 'failed') {
+            $payment->update([
+                'status' => 'failed',
+                'processed_at' => now(),
+            ]);
+            
+            Log::info('Payment status updated to failed via webhook', [
+                'payment_id' => $payment->id,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+        }
+    }
+
+    /**
      * Process payment with the actual provider
      */
     private function processWithProvider(Payment $payment, array $paymentData): void

@@ -56,17 +56,20 @@ class EnrollmentSeeder extends Seeder
                 ]);
 
                 // Create course progress
-                $completionPercentage = fake()->numberBetween(0, 100);
-                $isCompleted = $completionPercentage >= 95;
+                $progressPercentage = fake()->numberBetween(0, 100);
+                $completedLessons = fake()->numberBetween(0, 20);
+                $totalLessons = fake()->numberBetween($completedLessons, 25);
 
                 $courseProgress = UserProgress::create([
                     'user_id' => $student->id,
                     'course_id' => $course->id,
-                    'completion_percentage' => $completionPercentage,
-                    'is_completed' => $isCompleted,
-                    'completed_at' => $isCompleted ? fake()->dateTimeBetween($enrollment->enrolled_at, 'now') : null,
-                    'total_time_spent' => fake()->numberBetween(30, $course->duration_hours * 60), // minutes
-                    'last_lesson_completed' => fake()->numberBetween(0, 20),
+                    'completed_lessons' => $completedLessons,
+                    'total_lessons' => $totalLessons,
+                    'progress_percentage' => $progressPercentage,
+                    'last_lesson_id' => null, // Will be set later if needed
+                    'time_spent_minutes' => fake()->numberBetween(30, $course->duration_hours * 60),
+                    'started_at' => $enrollment->enrolled_at,
+                    'completed_at' => $progressPercentage >= 95 ? fake()->dateTimeBetween($enrollment->enrolled_at, 'now') : null,
                 ]);
 
                 // Create lesson progress for some lessons
@@ -82,14 +85,13 @@ class EnrollmentSeeder extends Seeder
                         LessonProgress::create([
                             'user_id' => $student->id,
                             'lesson_id' => $lesson->id,
+                            'watch_time_seconds' => fake()->numberBetween(0, ($lesson->duration_minutes ?? 30) * 60),
                             'watch_percentage' => $watchPercentage,
-                            'watched_duration' => fake()->numberBetween(0, $lesson->estimated_duration ?? 30) * 60, // seconds
                             'is_completed' => $lessonCompleted,
                             'completed_at' => $lessonCompleted ? fake()->dateTimeBetween($enrollment->enrolled_at, 'now') : null,
-                            'quiz_score' => $lesson->has_quiz ? fake()->randomFloat(1, 60, 100) : null,
-                            'quiz_attempts' => $lesson->has_quiz ? fake()->numberBetween(1, 3) : 0,
+                            'quiz_score' => fake()->boolean(50) ? fake()->randomFloat(1, 60, 100) : null,
+                            'quiz_attempts' => fake()->numberBetween(0, 3),
                             'notes' => fake()->boolean(30) ? fake()->paragraph() : null,
-                            'last_accessed_at' => fake()->dateTimeBetween($enrollment->enrolled_at, 'now'),
                         ]);
                     }
                 }

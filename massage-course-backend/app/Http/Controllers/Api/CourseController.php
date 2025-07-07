@@ -31,15 +31,30 @@ class CourseController extends Controller
             ->when($request->difficulty, function ($query, $difficulty) {
                 $query->where('difficulty_level', $difficulty);
             })
+            ->when($request->category, function ($query, $category) {
+                $query->where('category', $category);
+            })
+            ->when($request->sort, function ($query, $sort) use ($request) {
+                $order = $request->order === 'desc' ? 'desc' : 'asc';
+                $query->orderBy($sort, $order);
+            })
             ->paginate($request->per_page ?? 12);
 
         return response()->json([
-            'courses' => CourseResource::collection($courses->items()),
+            'data' => CourseResource::collection($courses->items()),
             'meta' => [
                 'current_page' => $courses->currentPage(),
                 'last_page' => $courses->lastPage(),
                 'per_page' => $courses->perPage(),
-                'total' => $courses->total()
+                'total' => $courses->total(),
+                'from' => $courses->firstItem(),
+                'to' => $courses->lastItem()
+            ],
+            'links' => [
+                'first' => $courses->url(1),
+                'last' => $courses->url($courses->lastPage()),
+                'prev' => $courses->previousPageUrl(),
+                'next' => $courses->nextPageUrl()
             ]
         ]);
     }
@@ -49,10 +64,13 @@ class CourseController extends Controller
      */
     public function show(Course $course, Request $request): JsonResponse
     {
-        $this->authorize('view', $course);
+        // Check if course is published or user is authenticated
+        if (!$course->is_published && !$request->user()) {
+            abort(404);
+        }
 
         $course->load([
-            'modules.lessons' => function ($query) use ($request) {
+            'modules.lessons' => function ($query) use ($request, $course) {
                 if (!$request->user() || !$request->user()->isEnrolledIn($course)) {
                     $query->where('is_preview', true);
                 }
@@ -168,6 +186,8 @@ class CourseController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
+        $startTime = microtime(true);
+        
         $query = $request->validate([
             'q' => 'required|string|min:2|max:100',
             'per_page' => 'nullable|integer|min:1|max:50'
@@ -182,14 +202,26 @@ class CourseController extends Controller
             ->ordered()
             ->paginate($query['per_page'] ?? 12);
 
+        $searchTime = round((microtime(true) - $startTime) * 1000, 2); // in milliseconds
+
         return response()->json([
-            'courses' => CourseResource::collection($courses->items()),
+            'data' => CourseResource::collection($courses->items()),
             'meta' => [
                 'query' => $query['q'],
+                'total_results' => $courses->total(),
+                'search_time' => $searchTime,
                 'current_page' => $courses->currentPage(),
                 'last_page' => $courses->lastPage(),
                 'per_page' => $courses->perPage(),
-                'total' => $courses->total()
+                'total' => $courses->total(),
+                'from' => $courses->firstItem(),
+                'to' => $courses->lastItem()
+            ],
+            'links' => [
+                'first' => $courses->url(1),
+                'last' => $courses->url($courses->lastPage()),
+                'prev' => $courses->previousPageUrl(),
+                'next' => $courses->nextPageUrl()
             ]
         ]);
     }

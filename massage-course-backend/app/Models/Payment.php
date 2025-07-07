@@ -18,6 +18,9 @@ class Payment extends Model
         'currency',
         'status',
         'payment_method',
+        'payment_provider',
+        'provider_transaction_id',
+        'payment_data',
         'metadata',
         'processed_at',
         'refunded_at',
@@ -27,6 +30,7 @@ class Payment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'refund_amount' => 'decimal:2',
+        'payment_data' => 'array',
         'metadata' => 'array',
         'processed_at' => 'datetime',
         'refunded_at' => 'datetime',

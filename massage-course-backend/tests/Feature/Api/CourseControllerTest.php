@@ -151,7 +151,6 @@ class CourseControllerTest extends TestCase
     public function test_authenticated_user_can_view_enrolled_courses()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
 
         $enrolledCourses = Course::factory()->count(3)->published()->create();
         $notEnrolledCourse = Course::factory()->published()->create();
@@ -163,9 +162,8 @@ class CourseControllerTest extends TestCase
             ]);
         }
 
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->getJson('/api/courses/enrolled');
+        $response = $this->actingAs($user)
+            ->getJson('/api/courses/enrolled');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -185,15 +183,13 @@ class CourseControllerTest extends TestCase
     public function test_authenticated_user_can_enroll_in_course()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
         $course = Course::factory()->published()->create();
 
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->postJson("/api/courses/{$course->id}/enroll", [
-            'payment_method' => 'stripe',
-            'payment_token' => 'tok_visa'
-        ]);
+        $response = $this->actingAs($user)
+            ->postJson("/api/courses/{$course->id}/enroll", [
+                'payment_method' => 'stripe',
+                'payment_token' => 'tok_visa'
+            ]);
 
         $response->assertStatus(201)
             ->assertJsonStructure([
@@ -215,7 +211,6 @@ class CourseControllerTest extends TestCase
     public function test_user_cannot_enroll_in_same_course_twice()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
         $course = Course::factory()->published()->create();
 
         // First enrollment
@@ -224,12 +219,11 @@ class CourseControllerTest extends TestCase
             'course_id' => $course->id
         ]);
 
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->postJson("/api/courses/{$course->id}/enroll", [
-            'payment_method' => 'stripe',
-            'payment_token' => 'tok_visa'
-        ]);
+        $response = $this->actingAs($user)
+            ->postJson("/api/courses/{$course->id}/enroll", [
+                'payment_method' => 'stripe',
+                'payment_token' => 'tok_visa'
+            ]);
 
         $response->assertStatus(409)
             ->assertJson([
@@ -240,7 +234,6 @@ class CourseControllerTest extends TestCase
     public function test_authenticated_user_can_view_course_statistics()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
         $course = Course::factory()->published()->create();
 
         CourseEnrollment::factory()->create([
@@ -248,9 +241,8 @@ class CourseControllerTest extends TestCase
             'course_id' => $course->id
         ]);
 
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->getJson("/api/courses/{$course->id}/statistics");
+        $response = $this->actingAs($user)
+            ->getJson("/api/courses/{$course->id}/statistics");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -267,12 +259,10 @@ class CourseControllerTest extends TestCase
     public function test_user_cannot_view_statistics_for_non_enrolled_course()
     {
         $user = User::factory()->create();
-        $token = $user->createToken('test-token')->plainTextToken;
         $course = Course::factory()->published()->create();
 
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->getJson("/api/courses/{$course->id}/statistics");
+        $response = $this->actingAs($user)
+            ->getJson("/api/courses/{$course->id}/statistics");
 
         $response->assertStatus(403)
             ->assertJson([

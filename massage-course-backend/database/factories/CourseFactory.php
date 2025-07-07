@@ -83,6 +83,7 @@ class CourseFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_published' => true,
+            'published_at' => $this->faker->dateTimeBetween('-6 months', 'now'),
         ]);
     }
 
@@ -91,6 +92,7 @@ class CourseFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'featured' => true,
             'is_published' => true,
+            'published_at' => $this->faker->dateTimeBetween('-6 months', 'now'),
         ]);
     }
 

@@ -21,9 +21,11 @@ class Lesson extends Model
         'video_duration_seconds',
         'duration_minutes',
         'thumbnail',
-        'sort_order',
+        'order',
         'is_published',
         'is_preview',
+        'is_free',
+        'reading_time_minutes',
         'resources',
         'quiz_questions'
     ];
@@ -84,7 +86,7 @@ class Lesson extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order');
+        return $query->orderBy('order');
     }
 
     /**

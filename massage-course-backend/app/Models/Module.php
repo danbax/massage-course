@@ -16,7 +16,9 @@ class Module extends Model
         'course_id',
         'title',
         'description',
-        'sort_order',
+        'order',
+        'duration_minutes',
+        'learning_objectives',
         'is_published'
     ];
 
@@ -40,7 +42,7 @@ class Module extends Model
      */
     public function lessons(): HasMany
     {
-        return $this->hasMany(Lesson::class)->orderBy('sort_order');
+        return $this->hasMany(Lesson::class)->orderBy('order');
     }
 
     /**
@@ -56,7 +58,7 @@ class Module extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order');
+        return $query->orderBy('order');
     }
 
     /**

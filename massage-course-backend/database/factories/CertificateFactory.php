@@ -22,24 +22,10 @@ class CertificateFactory extends Factory
 
         return [
             'course_id' => Course::factory(),
-            'name' => $this->faker->randomElement($certificateTypes),
-            'description' => 'Official certificate of completion for this massage therapy course.',
-            'template_path' => 'certificates/templates/default-template.html',
-            'requirements' => json_encode([
-                'complete_all_lessons' => true,
-                'minimum_quiz_score' => 70,
-                'practical_assessment' => false,
-                'attendance_percentage' => 80
-            ]),
+            'title' => $this->faker->randomElement($certificateTypes),
+            'template_content' => '<html><body><h1>Certificate of Completion</h1><p>This certifies that {student_name} has successfully completed {course_title}</p></body></html>',
+            'background_image' => null,
             'is_active' => $this->faker->boolean(85),
-            'design_config' => json_encode([
-                'background_color' => '#ffffff',
-                'border_color' => '#4F46E5',
-                'text_color' => '#1F2937',
-                'font_family' => 'serif',
-                'logo_position' => 'top-center',
-                'signature_required' => true
-            ]),
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-6 months', 'now'),
         ];

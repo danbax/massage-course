@@ -12,6 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
+            // Drop indexes first before dropping columns
+            $table->dropIndex(['is_published', 'published_at']); // courses_is_published_published_at_index
+            $table->dropIndex(['sort_order']); // courses_sort_order_index
+        });
+
+        Schema::table('courses', function (Blueprint $table) {
             // Drop columns that don't match the expected structure
             $table->dropColumn([
                 'thumbnail',
@@ -20,7 +26,6 @@ return new class extends Migration
                 'instructor_avatar',
                 'prerequisites',
                 'is_featured',
-                'published_at',
                 'meta_title',
                 'meta_description',
                 'sort_order'
@@ -54,21 +59,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            // Add back the dropped columns
-            $table->string('thumbnail')->nullable();
-            $table->string('instructor_name');
-            $table->text('instructor_bio')->nullable();
-            $table->string('instructor_avatar')->nullable();
-            $table->json('prerequisites')->nullable();
-            $table->boolean('is_featured')->default(false);
-            $table->timestamp('published_at')->nullable();
-            $table->string('meta_title')->nullable();
-            $table->text('meta_description')->nullable();
-            $table->integer('sort_order')->default(0);
-        });
-
-        Schema::table('courses', function (Blueprint $table) {
-            // Drop the added columns
+            // Drop the added columns first
             $table->dropColumn([
                 'short_description',
                 'instructor_id',
@@ -87,6 +78,26 @@ return new class extends Migration
                 'enrollment_count',
                 'last_updated'
             ]);
+        });
+
+        Schema::table('courses', function (Blueprint $table) {
+            // Add back the dropped columns
+            $table->string('thumbnail')->nullable();
+            $table->string('instructor_name');
+            $table->text('instructor_bio')->nullable();
+            $table->string('instructor_avatar')->nullable();
+            $table->json('prerequisites')->nullable();
+            $table->boolean('is_featured')->default(false);
+            $table->timestamp('published_at')->nullable();
+            $table->string('meta_title')->nullable();
+            $table->text('meta_description')->nullable();
+            $table->integer('sort_order')->default(0);
+        });
+
+        Schema::table('courses', function (Blueprint $table) {
+            // Add back the indexes
+            $table->index(['is_published', 'published_at']);
+            $table->index('sort_order');
         });
     }
 };

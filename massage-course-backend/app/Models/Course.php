@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -47,17 +48,17 @@ class Course extends Model
      */
     public function modules(): HasMany
     {
-        return $this->hasMany(Module::class)->orderBy('sort_order');
+        return $this->hasMany(Module::class)->orderBy('order');
     }
 
     /**
      * Get all lessons for the course through modules.
      */
-    public function lessons(): HasMany
+    public function lessons(): HasManyThrough
     {
         return $this->hasManyThrough(Lesson::class, Module::class)
-                    ->orderBy('modules.sort_order')
-                    ->orderBy('lessons.sort_order');
+                    ->orderBy('modules.order')
+                    ->orderBy('lessons.order');
     }
 
     /**
@@ -125,7 +126,7 @@ class Course extends Model
      */
     public function getTotalDurationAttribute(): int
     {
-        return $this->lessons()->sum('duration_minutes');
+        return $this->lessons()->sum('lessons.duration_minutes');
     }
 
     /**
