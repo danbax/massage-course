@@ -29,6 +29,7 @@ class User extends Authenticatable
         'date_of_birth',
         'profession',
         'bio',
+        'language',
         'is_admin',
         'email_verified_at',
         'last_login_at'

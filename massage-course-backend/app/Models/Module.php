@@ -13,9 +13,9 @@ class Module extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'course_id',
         'title',
         'description',
+        'language',
         'order',
         'duration_minutes',
         'learning_objectives',
@@ -23,19 +23,14 @@ class Module extends Model
     ];
 
     protected $casts = [
+        'learning_objectives' => 'array',
         'is_published' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime'
     ];
 
-    /**
-     * Get the course that owns the module.
-     */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class);
-    }
+    // Course relationship removed - single course architecture
 
     /**
      * Get the lessons for the module.

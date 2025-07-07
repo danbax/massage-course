@@ -17,23 +17,28 @@ class Lesson extends Model
         'title',
         'description',
         'content',
+        'language',
         'video_url',
-        'video_duration_seconds',
+        'video_duration',
         'duration_minutes',
         'thumbnail',
         'order',
         'is_published',
-        'is_preview',
         'is_free',
-        'reading_time_minutes',
+        'has_quiz',
         'resources',
+        'learning_objectives',
+        'estimated_duration',
+        'difficulty_level',
         'quiz_questions'
     ];
 
     protected $casts = [
         'is_published' => 'boolean',
-        'is_preview' => 'boolean',
+        'is_free' => 'boolean',
+        'has_quiz' => 'boolean',
         'resources' => 'array',
+        'learning_objectives' => 'array',
         'quiz_questions' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -46,15 +51,6 @@ class Lesson extends Model
     public function module(): BelongsTo
     {
         return $this->belongsTo(Module::class);
-    }
-
-    /**
-     * Get the course through the module.
-     */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class, 'course_id')
-                    ->orWhereHas('module.course');
     }
 
     /**
@@ -74,11 +70,11 @@ class Lesson extends Model
     }
 
     /**
-     * Scope a query to only include preview lessons.
+     * Scope a query to only include free lessons.
      */
-    public function scopePreview($query)
+    public function scopeFree($query)
     {
-        return $query->where('is_preview', true);
+        return $query->where('is_free', true);
     }
 
     /**

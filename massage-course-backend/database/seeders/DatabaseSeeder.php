@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
         // Seed in order of dependencies
         $this->call([
             UserSeeder::class,
+            MassageCourseContentSeeder::class, // Add our specific course content
             CourseSeeder::class,
             ModuleSeeder::class,
             LessonSeeder::class,
