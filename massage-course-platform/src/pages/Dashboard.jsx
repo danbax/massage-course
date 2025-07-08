@@ -1,7 +1,10 @@
 import { motion } from 'framer-motion'
-import { useAuth } from '../hooks/useAuth'
-import { useCourse } from '../hooks/useCourse'
-import { useLanguage } from '../hooks/useLanguage'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuthSelectors, useProgressSelectors, useUserSelectors } from '../hooks/storeSelectors'
+import { useProgressStore } from '../hooks/useProgressStore'
+import { useUserStore } from '../hooks/useUserStore'
+import { useAppStore } from '../hooks/useAppStore'
 import {
   Box,
   Container,
@@ -23,72 +26,93 @@ import {
   FaTrophy,
   FaChartLine,
   FaFire,
-  FaBookOpen
+  FaBookOpen,
+  FaPlay
 } from 'react-icons/fa'
 
 const Dashboard = () => {
-  const { user } = useAuth()
-  const { lessons, getProgress } = useCourse()
-  const { t } = useLanguage()
+  const navigate = useNavigate()
+  const { user } = useAuthSelectors()
+  const { progress, completionPercentage } = useProgressSelectors()
+  const { statistics } = useUserSelectors()
+  
+  const { fetchProgress } = useProgressStore()
+  const { fetchStatistics } = useUserStore()
+  const { language } = useAppStore()
 
-  const completedLessons = lessons.filter(lesson => lesson.completed).length
-  const totalStudyTime = completedLessons * 20
-  const progress = getProgress()
+  useEffect(() => {
+    const initializeDashboard = async () => {
+      await Promise.allSettled([
+        fetchProgress(),
+        fetchStatistics(),
+        fetchModules()
+      ])
+    }
+    
+    initializeDashboard()
+  }, [fetchProgress, fetchStatistics, fetchModules])
 
   const stats = [
     {
       name: 'Lessons Completed',
-      value: completedLessons,
+      value: progress?.completed_lessons || 0,
       icon: FaPlayCircle,
       color: 'blue',
       change: '+2 this week'
     },
     {
       name: 'Study Time',
-      value: `${totalStudyTime}m`,
+      value: `${Math.round((statistics?.time_spent_minutes || 0) / 60)}h`,
       icon: FaClock,
       color: 'purple',
       change: '+45m this week'
     },
     {
       name: 'Progress',
-      value: `${progress}%`,
+      value: `${completionPercentage}%`,
       icon: FaChartLine,
       color: 'green',
       change: '+15% this week'
     },
     {
-      name: 'Achievements',
-      value: '3',
+      name: 'Certificates',
+      value: statistics?.certificates_earned || 0,
       icon: FaTrophy,
       color: 'orange',
-      change: '+1 this week'
+      change: progress?.is_completed ? '+1 available' : 'Complete course'
     }
   ]
 
   const recentActivity = [
     {
       id: 1,
-      title: 'Completed "Deep Tissue Massage Fundamentals"',
-      time: '2 hours ago',
+      title: 'Started your massage learning journey',
+      time: 'Today',
       icon: FaPlayCircle,
       color: 'blue'
     },
     {
       id: 2,
-      title: 'Earned "Swedish Massage Specialist" badge',
-      time: '1 day ago',
-      icon: FaTrophy,
-      color: 'yellow'
-    },
-    {
-      id: 3,
-      title: 'Started "Sports Massage Applications"',
-      time: '3 days ago',
+      title: 'Enrolled in Professional Massage Course',
+      time: 'Today',
       icon: FaBookOpen,
       color: 'green'
     }
   ]
+
+  const handleContinueLearning = () => {
+    if (modules.length > 0) {
+      const firstModule = modules[0]
+      if (firstModule.lessons && firstModule.lessons.length > 0) {
+        const nextLesson = firstModule.lessons.find(lesson => !lesson.progress?.is_completed) || firstModule.lessons[0]
+        navigate(`/app/video/${nextLesson.id}`)
+      } else {
+        navigate('/app/courses')
+      }
+    } else {
+      navigate('/app/courses')
+    }
+  }
 
   return (
     <Container maxW="7xl">
@@ -102,7 +126,7 @@ const Dashboard = () => {
               <Flex justify="space-between" align="center">
                 <VStack align="start" spacing={2}>
                   <Heading size="lg">
-                    {t('course.welcome')}, {user?.name}! 👋
+                    Welcome back, {user?.name}! 👋
                   </Heading>
                   <Text color="blue.100">
                     Ready to continue your massage therapy journey?
@@ -119,9 +143,9 @@ const Dashboard = () => {
               <Box mt={6}>
                 <Flex justify="space-between" align="center" mb={2}>
                   <Text fontSize="sm" fontWeight="medium">Overall Progress</Text>
-                  <Text fontSize="sm" fontWeight="medium">{progress}%</Text>
+                  <Text fontSize="sm" fontWeight="medium">{completionPercentage}%</Text>
                 </Flex>
-                <Progress value={progress} colorScheme="whiteAlpha" bg="blue.600" />
+                <Progress value={completionPercentage} colorScheme="whiteAlpha" bg="blue.600" />
               </Box>
             </CardBody>
           </Card>
@@ -217,31 +241,37 @@ const Dashboard = () => {
               </Heading>
               <VStack spacing={3} align="stretch">
                 <Button
+                  leftIcon={<FaPlay />}
                   bg="blue.50"
                   color="blue.700"
                   _hover={{ bg: "blue.100" }}
                   justifyContent="flex-start"
                   p={3}
+                  onClick={handleContinueLearning}
                 >
-                  Continue Current Lesson
+                  Continue Learning
                 </Button>
                 <Button
+                  leftIcon={<FaBookOpen />}
                   bg="purple.50"
                   color="purple.700"
                   _hover={{ bg: "purple.100" }}
                   justifyContent="flex-start"
                   p={3}
+                  onClick={() => navigate('/app/courses')}
                 >
                   View All Courses
                 </Button>
                 <Button
+                  leftIcon={<FaTrophy />}
                   bg="green.50"
                   color="green.700"
                   _hover={{ bg: "green.100" }}
                   justifyContent="flex-start"
                   p={3}
+                  onClick={() => navigate('/app/certificates')}
                 >
-                  Download Certificate
+                  View Certificates
                 </Button>
               </VStack>
             </CardBody>

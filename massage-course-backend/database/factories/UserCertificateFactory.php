@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Models\UserCertificate;
 use App\Models\User;
 use App\Models\Certificate;
-use App\Models\Course;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class UserCertificateFactory extends Factory
@@ -14,17 +13,32 @@ class UserCertificateFactory extends Factory
 
     public function definition(): array
     {
+        $issueDate = $this->faker->dateTimeBetween('-6 months', 'now');
+        
         return [
             'user_id' => User::factory(),
             'certificate_id' => Certificate::factory(),
-            'course_id' => Course::factory(),
-            'certificate_number' => $this->faker->unique()->numerify('CERT-######'),
-            'issued_at' => $this->faker->dateTimeBetween('-6 months', 'now'),
-            'file_path' => 'certificates/' . $this->faker->uuid() . '.pdf',
-            'verification_code' => $this->faker->unique()->bothify('??##??##'),
-            'created_at' => $this->faker->dateTimeBetween('-6 months', 'now'),
-            'updated_at' => $this->faker->dateTimeBetween('-3 months', 'now'),
+            'certificate_number' => $this->generateCertificateNumber(),
+            'issued_at' => $issueDate,
+            'file_path' => 'certificates/user/' . $this->faker->uuid() . '.pdf',
+            'verification_code' => $this->generateVerificationCode(),
+            'created_at' => $issueDate,
+            'updated_at' => $this->faker->dateTimeBetween($issueDate, 'now'),
         ];
+    }
+
+    private function generateCertificateNumber(): string
+    {
+        $year = date('Y');
+        $month = date('m');
+        $sequence = $this->faker->unique()->numberBetween(1000, 9999);
+        
+        return "MT-{$year}{$month}-{$sequence}";
+    }
+
+    private function generateVerificationCode(): string
+    {
+        return strtoupper($this->faker->bothify('??##??##'));
     }
 
     public function forUser(User $user): static
@@ -34,10 +48,10 @@ class UserCertificateFactory extends Factory
         ]);
     }
 
-    public function forCourse(Course $course): static
+    public function forCertificate(Certificate $certificate): static
     {
         return $this->state(fn (array $attributes) => [
-            'course_id' => $course->id,
+            'certificate_id' => $certificate->id,
         ]);
     }
 
@@ -45,6 +59,13 @@ class UserCertificateFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'verification_code' => $code,
+        ]);
+    }
+
+    public function recentlyIssued(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'issued_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ]);
     }
 }

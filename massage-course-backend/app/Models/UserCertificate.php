@@ -13,7 +13,6 @@ class UserCertificate extends Model
     protected $fillable = [
         'user_id',
         'certificate_id',
-        'course_id',
         'certificate_number',
         'issued_at',
         'file_path',
@@ -43,19 +42,20 @@ class UserCertificate extends Model
     }
 
     /**
-     * Get the course.
-     */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class);
-    }
-
-    /**
      * Generate a unique certificate number.
      */
     public static function generateCertificateNumber(): string
     {
-        return 'CERT-' . strtoupper(uniqid()) . '-' . date('Y');
+        $year = date('Y');
+        $month = date('m');
+        $sequence = rand(1000, 9999);
+        
+        // Ensure uniqueness
+        while (static::where('certificate_number', "MT-{$year}{$month}-{$sequence}")->exists()) {
+            $sequence = rand(1000, 9999);
+        }
+        
+        return "MT-{$year}{$month}-{$sequence}";
     }
 
     /**
@@ -63,7 +63,14 @@ class UserCertificate extends Model
      */
     public static function generateVerificationCode(): string
     {
-        return strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
+        $code = strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
+        
+        // Ensure uniqueness
+        while (static::where('verification_code', $code)->exists()) {
+            $code = strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
+        }
+        
+        return $code;
     }
 
     /**
@@ -80,5 +87,35 @@ class UserCertificate extends Model
     public function getVerificationUrlAttribute(): string
     {
         return route('certificates.verify', ['code' => $this->verification_code]);
+    }
+
+    /**
+     * Check if the certificate file exists.
+     */
+    public function getFileExistsAttribute(): bool
+    {
+        return $this->file_path && file_exists(storage_path('app/public/' . $this->file_path));
+    }
+
+    /**
+     * Issue a certificate to a user.
+     */
+    public static function issueToUser(User $user, Certificate $certificate = null): UserCertificate
+    {
+        if (!$certificate) {
+            $certificate = Certificate::getDefault();
+        }
+
+        if (!$certificate) {
+            throw new \Exception('No certificate template available');
+        }
+
+        return static::create([
+            'user_id' => $user->id,
+            'certificate_id' => $certificate->id,
+            'certificate_number' => static::generateCertificateNumber(),
+            'issued_at' => now(),
+            'verification_code' => static::generateVerificationCode(),
+        ]);
     }
 }

@@ -2,58 +2,59 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'avatar',
+        'avatar_url',
         'phone',
         'date_of_birth',
+        'gender',
         'profession',
+        'experience_level',
+        'certifications',
+        'specializations',
         'bio',
-        'language',
+        'marketing_consent',
+        'newsletter_subscription',
+        'notification_preferences',
         'is_admin',
-        'email_verified_at',
-        'last_login_at'
+        'role',
+        'timezone',
+        'language',
+        'country',
+        'city',
+        'last_login_at',
+        'email_verified_at'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'date_of_birth' => 'date',
+            'certifications' => 'array',
+            'specializations' => 'array',
+            'marketing_consent' => 'boolean',
+            'newsletter_subscription' => 'boolean',
+            'notification_preferences' => 'array',
             'is_admin' => 'boolean',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
@@ -61,19 +62,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the default course (since all users have access to the same course).
+     * Get the user's overall progress (single course system).
      */
-    public function course()
+    public function progress(): HasOne
     {
-        return Course::first(); // All users have access to the single course
-    }
-
-    /**
-     * Get the user's overall course progress.
-     */
-    public function courseProgress(): HasMany
-    {
-        return $this->hasMany(UserProgress::class);
+        return $this->hasOne(UserProgress::class);
     }
 
     /**
@@ -101,39 +94,21 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user has access to the course (always true since there's only one course).
-     */
-    public function hasAccessToCourse(): bool
-    {
-        return true; // All users have access to the single course
-    }
-
-    /**
      * Check if the user has completed the course.
      */
     public function hasCompletedCourse(): bool
     {
-        $course = $this->course();
-        if (!$course) {
-            return false;
-        }
-        
-        return $this->courseProgress()->where('course_id', $course->id)
-                    ->where('is_completed', true)
-                    ->exists();
+        $progress = $this->progress;
+        return $progress && $progress->completed_at !== null;
     }
 
     /**
-     * Get the progress for the default course.
+     * Get the user's course progress percentage.
      */
-    public function getCourseProgress()
+    public function getProgressPercentage(): float
     {
-        $course = $this->course();
-        if (!$course) {
-            return null;
-        }
-        
-        return $this->courseProgress()->where('course_id', $course->id)->first();
+        $progress = $this->progress;
+        return $progress ? $progress->progress_percentage : 0;
     }
 
     /**
@@ -141,15 +116,23 @@ class User extends Authenticatable
      */
     public function getIsAdminAttribute(): bool
     {
-        return $this->attributes['is_admin'] === true || $this->attributes['is_admin'] === 1;
+        return $this->attributes['is_admin'] === true || $this->attributes['is_admin'] === 1 || $this->role === 'admin';
     }
 
     /**
-     * Get the user's full name.
+     * Check if the user is an instructor.
      */
-    public function getFullNameAttribute(): string
+    public function getIsInstructorAttribute(): bool
     {
-        return $this->name;
+        return $this->role === 'instructor';
+    }
+
+    /**
+     * Check if the user is a student.
+     */
+    public function getIsStudentAttribute(): bool
+    {
+        return $this->role === 'student';
     }
 
     /**
@@ -157,11 +140,31 @@ class User extends Authenticatable
      */
     public function getAvatarUrlAttribute(): string
     {
+        if ($this->attributes['avatar_url']) {
+            return $this->attributes['avatar_url'];
+        }
+
         if ($this->avatar) {
             return asset('storage/avatars/' . $this->avatar);
         }
 
-        // Return default avatar or gravatar
         return 'https://www.gravatar.com/avatar/' . md5(strtolower(trim($this->email))) . '?d=mp&s=200';
+    }
+
+    /**
+     * Get completed lessons count for the user.
+     */
+    public function getCompletedLessonsCount(): int
+    {
+        return $this->lessonProgress()->where('is_completed', true)->count();
+    }
+
+    /**
+     * Get total time spent learning.
+     */
+    public function getTotalTimeSpent(): int
+    {
+        $progress = $this->progress;
+        return $progress ? $progress->time_spent_minutes : 0;
     }
 }

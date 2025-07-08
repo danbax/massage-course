@@ -80,5 +80,61 @@ export const profileApi = {
   updatePassword: async (passwordData) => {
     const response = await apiClient.put('/profile/password', passwordData)
     return response
+  },
+
+  // Get user statistics
+  getStatistics: async () => {
+    const response = await apiClient.get('/profile/statistics')
+    return response
+  },
+
+  // Delete account
+  deleteAccount: async (passwordData) => {
+    const response = await apiClient.delete('/profile/account', passwordData)
+    return response
+  }
+}
+
+export const settingsApi = {
+  // Get settings
+  getSettings: async () => {
+    const response = await apiClient.get('/settings')
+    return response
+  },
+
+  // Update settings
+  updateSettings: async (settingsData) => {
+    const response = await apiClient.put('/settings', settingsData)
+    return response
+  },
+
+  // Get notification settings
+  getNotificationSettings: async () => {
+    const response = await apiClient.get('/settings/notifications')
+    return response
+  },
+
+  // Update notification settings
+  updateNotificationSettings: async (notificationData) => {
+    const response = await apiClient.put('/settings/notifications', notificationData)
+    return response
+  },
+
+  // Get privacy settings
+  getPrivacySettings: async () => {
+    const response = await apiClient.get('/settings/privacy')
+    return response
+  },
+
+  // Update privacy settings
+  updatePrivacySettings: async (privacyData) => {
+    const response = await apiClient.put('/settings/privacy', privacyData)
+    return response
+  },
+
+  // Export user data
+  exportData: async () => {
+    const response = await apiClient.get('/settings/export')
+    return response
   }
 }

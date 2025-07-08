@@ -1,85 +1,79 @@
 import apiClient from '../lib/api'
 
 export const certificateApi = {
-  // Get user certificates (requires authentication)
+  // Get user certificates
   getCertificates: async () => {
     const response = await apiClient.get('/certificates')
     return response
   },
 
-  // Get specific certificate (requires authentication)
+  // Get specific certificate
   getCertificate: async (certificateId) => {
     const response = await apiClient.get(`/certificates/${certificateId}`)
     return response
   },
 
-  // Download certificate (requires authentication)
-  downloadCertificate: async (certificateId) => {
-    const response = await apiClient.get(`/certificates/${certificateId}/download`)
-    return response
-  },
-
-  // Generate certificate for completed course (requires authentication)
+  // Generate certificate
   generateCertificate: async (courseId) => {
-    const response = await apiClient.post(`/certificates/generate/${courseId}`)
+    const response = await apiClient.post('/certificates/generate', { course_id: courseId })
     return response
   },
 
-  // Verify certificate (public)
-  verifyCertificate: async (code) => {
-    const response = await apiClient.get(`/certificates/verify/${code}`)
+  // Download certificate
+  downloadCertificate: async (certificateId) => {
+    const response = await apiClient.get(`/certificates/${certificateId}/download`, {
+      responseType: 'blob'
+    })
+    return response
+  },
+
+  // Check certificate eligibility
+  checkEligibility: async (courseId) => {
+    const response = await apiClient.get(`/certificates/eligibility?course_id=${courseId}`)
+    return response
+  },
+
+  // Verify certificate by code
+  verifyCertificate: async (verificationCode) => {
+    const response = await apiClient.get(`/certificates/verify/${verificationCode}`)
     return response
   }
 }
 
 export const paymentApi = {
-  // Get payment history (requires authentication)
+  // Get payment history
   getPayments: async () => {
     const response = await apiClient.get('/payments')
     return response
   },
 
-  // Get specific payment (requires authentication)
+  // Get specific payment
   getPayment: async (paymentId) => {
     const response = await apiClient.get(`/payments/${paymentId}`)
     return response
   },
 
-  // Create payment intent (requires authentication)
-  createPaymentIntent: async (paymentData) => {
-    const response = await apiClient.post('/payments/intent', paymentData)
+  // Create payment intent
+  createPaymentIntent: async (data) => {
+    const response = await apiClient.post('/payments/intent', data)
     return response
   },
 
-  // Confirm payment (requires authentication)
-  confirmPayment: async (paymentData) => {
-    const response = await apiClient.post('/payments/confirm', paymentData)
-    return response
-  }
-}
-
-export const settingsApi = {
-  // Get user settings (requires authentication)
-  getSettings: async () => {
-    const response = await apiClient.get('/settings')
+  // Confirm payment
+  confirmPayment: async (data) => {
+    const response = await apiClient.post('/payments/confirm', data)
     return response
   },
 
-  // Update user settings (requires authentication)
-  updateSettings: async (settings) => {
-    const response = await apiClient.put('/settings', settings)
+  // Check course access
+  checkAccess: async (data) => {
+    const response = await apiClient.get('/payments/access', { params: data })
     return response
   },
 
-  // Get notification settings (requires authentication)
-  getNotificationSettings: async () => {
-    const response = await apiClient.get('/settings/notifications')
-    return response
-  },
-
-  // Update notification settings (requires authentication)
-  updateNotificationSettings: async (notifications) => {
-    const response = await apiClient.put('/settings/notifications', notifications)
+  // Request refund
+  requestRefund: async (paymentId, data) => {
+    const response = await apiClient.post(`/payments/${paymentId}/refund`, data)
     return response
   }
 }

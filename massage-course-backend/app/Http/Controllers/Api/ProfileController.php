@@ -20,7 +20,7 @@ class ProfileController extends Controller
         $user = $request->user();
         
         return response()->json([
-            'profile' => new UserResource($user->load(['enrolledCourses', 'certificates']))
+            'profile' => new UserResource($user->load(['certificates', 'progress']))
         ]);
     }
 
@@ -37,7 +37,18 @@ class ProfileController extends Controller
             'phone' => 'nullable|string|max:20',
             'profession' => 'nullable|string|max:255',
             'bio' => 'nullable|string|max:1000',
-            'date_of_birth' => 'nullable|date|before:today'
+            'date_of_birth' => 'nullable|date|before:today',
+            'gender' => 'nullable|in:male,female,other,prefer_not_to_say',
+            'experience_level' => 'nullable|in:beginner,intermediate,professional',
+            'certifications' => 'nullable|array',
+            'specializations' => 'nullable|array',
+            'language' => 'nullable|in:en,es,fr,ru',
+            'timezone' => 'nullable|string',
+            'country' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'marketing_consent' => 'nullable|boolean',
+            'newsletter_subscription' => 'nullable|boolean',
+            'notification_preferences' => 'nullable|array'
         ]);
 
         $user->update($validated);
@@ -130,20 +141,27 @@ class ProfileController extends Controller
     public function statistics(Request $request): JsonResponse
     {
         $user = $request->user();
+        $userLanguage = $user->language ?? 'en';
         
-        $enrolledCoursesCount = $user->courseEnrollments()->count();
-        $completedCoursesCount = $user->courseEnrollments()->whereNotNull('completed_at')->count();
+        $progress = $user->progress;
+        $completedLessonsCount = $user->lessonProgress()->where('is_completed', true)->count();
+        $totalLessons = \App\Models\Lesson::where('language', $userLanguage)
+            ->where('is_published', true)
+            ->count();
         $certificatesCount = $user->certificates()->count();
         $totalWatchTime = $user->lessonProgress()->sum('watch_time_seconds');
 
         return response()->json([
             'statistics' => [
-                'enrolled_courses' => $enrolledCoursesCount,
-                'completed_courses' => $completedCoursesCount,
+                'course_progress' => $progress ? $progress->progress_percentage : 0,
+                'completed_lessons' => $completedLessonsCount,
+                'total_lessons' => $totalLessons,
                 'certificates_earned' => $certificatesCount,
                 'total_watch_time_hours' => round($totalWatchTime / 3600, 1),
-                'completion_rate' => $enrolledCoursesCount > 0 ? 
-                    round(($completedCoursesCount / $enrolledCoursesCount) * 100, 1) : 0
+                'time_spent_minutes' => $progress ? $progress->time_spent_minutes : 0,
+                'is_course_completed' => $user->hasCompletedCourse(),
+                'started_at' => $progress ? $progress->started_at : null,
+                'completed_at' => $progress ? $progress->completed_at : null
             ]
         ]);
     }

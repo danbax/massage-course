@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Certificate extends Model
@@ -12,7 +11,6 @@ class Certificate extends Model
     use HasFactory;
 
     protected $fillable = [
-        'course_id',
         'title',
         'template_content',
         'background_image',
@@ -24,14 +22,6 @@ class Certificate extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
-
-    /**
-     * Get the course that owns the certificate.
-     */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class);
-    }
 
     /**
      * Get the user certificates.
@@ -47,5 +37,35 @@ class Certificate extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Generate certificate content for a user.
+     */
+    public function generateContent(User $user, array $data = []): string
+    {
+        $defaultData = [
+            'student_name' => $user->name,
+            'completion_date' => now()->format('F j, Y'),
+            'course_title' => 'Professional Relaxation Massage Therapy Course',
+        ];
+
+        $mergedData = array_merge($defaultData, $data);
+        
+        $content = $this->template_content;
+        
+        foreach ($mergedData as $key => $value) {
+            $content = str_replace('{' . $key . '}', $value, $content);
+        }
+        
+        return $content;
+    }
+
+    /**
+     * Get the default certificate for the system.
+     */
+    public static function getDefault(): ?Certificate
+    {
+        return static::active()->first();
     }
 }
