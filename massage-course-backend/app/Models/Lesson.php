@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 
 class Lesson extends Model
 {
@@ -140,6 +141,30 @@ class Lesson extends Model
      */
     public function getHasQuizAttribute(): bool
     {
-        return !empty($this->quiz_questions) && count($this->quiz_questions) > 0;
+        try {
+            $quizQuestions = $this->quiz_questions;
+            
+            // Handle cases where quiz_questions might be null, empty, or malformed
+            if (empty($quizQuestions)) {
+                return false;
+            }
+            
+            // Ensure it's an array and count it
+            if (is_array($quizQuestions)) {
+                return count($quizQuestions) > 0;
+            }
+            
+            // If it's a string (JSON), try to decode it
+            if (is_string($quizQuestions)) {
+                $decoded = json_decode($quizQuestions, true);
+                return is_array($decoded) && count($decoded) > 0;
+            }
+            
+            return false;
+        } catch (\Exception $e) {
+            // Log the error and return false as fallback
+            Log::warning('Error checking quiz questions for lesson ' . $this->id . ': ' . $e->getMessage());
+            return false;
+        }
     }
 }

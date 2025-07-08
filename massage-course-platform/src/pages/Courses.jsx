@@ -61,14 +61,22 @@ const Courses = () => {
     )
   }
 
-  const completedLessons = modules?.reduce((total, module) => 
-    total + module.lessons.filter(lesson => lesson.progress?.is_completed).length, 0
-  ) || 0
+  const completedLessons = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
+    total + (module.lessons || []).filter(lesson => lesson.progress?.is_completed).length, 0
+  )
   
-  const totalLessons = modules?.reduce((total, module) => total + module.lessons.length, 0) || 0
-  const totalDuration = modules?.reduce((total, module) => 
-    total + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + (lesson.duration || 0), 0), 0
-  ) || 0
+  const totalLessons = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
+    total + (module.lessons || []).length, 0
+  )
+  
+  const totalDuration = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
+    total + (module.lessons || []).reduce((moduleTotal, lesson) => 
+      moduleTotal + (lesson.duration || 0), 0
+    ), 0
+  )
+  
+  // Calculate progress percentage
+  const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
   
   const toggleModule = (moduleIndex) => {
     setExpandedModules(prev => ({
@@ -78,9 +86,14 @@ const Courses = () => {
   }
   
   const handleLessonClick = (lesson) => {
+    if (!Array.isArray(modules)) return
+    
     // Check if lesson is available (current or previous lessons completed)
-    const moduleIndex = modules.findIndex(m => m.lessons.some(l => l.id === lesson.id))
+    const moduleIndex = modules.findIndex(m => m.lessons && m.lessons.some(l => l.id === lesson.id))
+    if (moduleIndex === -1) return
+    
     const lessonIndex = modules[moduleIndex].lessons.findIndex(l => l.id === lesson.id)
+    if (lessonIndex === -1) return
     
     // Allow access if it's the first lesson or if previous lessons are completed
     const canAccess = lessonIndex === 0 || modules[moduleIndex].lessons
@@ -96,10 +109,12 @@ const Courses = () => {
     if (lesson.progress?.is_completed) return 'completed'
     
     // Check if lesson is accessible
+    if (!Array.isArray(modules) || !modules[moduleIndex]) return 'locked'
+    
     const module = modules[moduleIndex]
-    const canAccess = lessonIndex === 0 || module.lessons
+    const canAccess = lessonIndex === 0 || (module.lessons && module.lessons
       .slice(0, lessonIndex)
-      .every(prevLesson => prevLesson.progress?.is_completed)
+      .every(prevLesson => prevLesson.progress?.is_completed))
     
     return canAccess ? 'available' : 'locked'
   }
@@ -154,7 +169,7 @@ const Courses = () => {
                       bg="whiteAlpha.800" 
                       h="full" 
                       borderRadius="full"
-                      width={`${progress}%`}
+                      width={`${progressData?.completion_percentage || 0}%`}
                       transition="width 0.3s"
                     />
                   </Box>
@@ -172,8 +187,9 @@ const Courses = () => {
             
             <VStack spacing={4}>
               {modules?.map((module, moduleIndex) => {
-                const moduleProgress = module.lessons.filter(l => l.progress?.is_completed).length / module.lessons.length * 100
-                const moduleCompleted = module.lessons.filter(l => l.progress?.is_completed).length
+                const lessons = module.lessons || []
+                const moduleProgress = lessons.filter(l => l.progress?.is_completed).length / lessons.length * 100
+                const moduleCompleted = lessons.filter(l => l.progress?.is_completed).length
                 const isExpanded = expandedModules[moduleIndex]
                 
                 return (
@@ -200,11 +216,11 @@ const Courses = () => {
                             <HStack spacing={4} fontSize="sm" color="gray.500">
                               <HStack spacing={1}>
                                 <Icon as={FaBookOpen} w={3} h={3} />
-                                <Text>{module.lessons.length} lessons</Text>
+                                <Text>{lessons.length} lessons</Text>
                               </HStack>
                               <HStack spacing={1}>
                                 <Icon as={FaClock} w={3} h={3} />
-                                <Text>{module.lessons.reduce((sum, lesson) => sum + lesson.duration, 0)} min</Text>
+                                <Text>{lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)} min</Text>
                               </HStack>
                             </HStack>
                           </VStack>
@@ -213,7 +229,7 @@ const Courses = () => {
                               colorScheme={moduleProgress === 100 ? 'green' : moduleProgress > 0 ? 'blue' : 'gray'}
                               fontSize="xs"
                             >
-                              {moduleCompleted}/{module.lessons.length} completed
+                              {moduleCompleted}/{lessons.length} completed
                             </Badge>
                             <Box w="20" bg="gray.200" borderRadius="full" h="1">
                               <Box
@@ -233,7 +249,7 @@ const Courses = () => {
                     {isExpanded && (
                       <Box pb={4} pt={0} px={6}>
                       <VStack spacing={3} align="stretch">
-                        {module.lessons.map((lesson, lessonIndex) => {
+                        {lessons.map((lesson, lessonIndex) => {
                           const status = getLessonStatus(lesson, moduleIndex, lessonIndex)
                           
                           return (
@@ -396,14 +412,14 @@ const Courses = () => {
                   <Box w="full">
                     <HStack justify="space-between" mb={2}>
                       <Text fontSize="sm" color="gray.600">Overall Progress</Text>
-                      <Text fontSize="sm" fontWeight="medium">{progress}%</Text>
+                      <Text fontSize="sm" fontWeight="medium">{progressPercentage}%</Text>
                     </HStack>
                     <Box bg="gray.200" borderRadius="full" h="3">
                       <Box 
                         bg="blue.500" 
                         h="full" 
                         borderRadius="full"
-                        width={`${progress}%`}
+                        width={`${progressPercentage}%`}
                         transition="width 0.3s"
                       />
                     </Box>
@@ -418,7 +434,7 @@ const Courses = () => {
                     </Box>
                     <Box textAlign="center" p={3} bg="orange.50" borderRadius="lg">
                       <Text fontSize="2xl" fontWeight="bold" color="orange.600">
-                        {lessons.length - completedLessons}
+                        {totalLessons - completedLessons}
                       </Text>
                       <Text fontSize="sm" color="orange.600">Remaining</Text>
                     </Box>
@@ -428,8 +444,8 @@ const Courses = () => {
 
                   <VStack spacing={2} w="full">
                     <Text fontSize="sm" fontWeight="medium" color="gray.700">Module Progress</Text>
-                    {moduleData.map(module => {
-                      const moduleProgress = module.lessons.filter(l => l.completed).length / module.lessons.length * 100
+                    {(Array.isArray(modules) ? modules : []).map(module => {
+                      const moduleProgress = (module.lessons || []).filter(l => l.progress?.is_completed).length / (module.lessons || []).length * 100
                       return (
                         <Box key={module.id} w="full">
                           <HStack justify="space-between" mb={1}>

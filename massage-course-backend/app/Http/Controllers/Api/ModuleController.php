@@ -7,15 +7,25 @@ use App\Models\Module;
 use App\Models\Lesson;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ModuleController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Get all modules with their lessons for the authenticated user.
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not authenticated',
+                'error' => 'Authentication failed'
+            ], 401);
+        }
+        
         $userLanguage = $user->language ?? 'en';
         
         // Get all published modules with their lessons filtered by user's language
@@ -77,6 +87,14 @@ class ModuleController extends Controller
     public function show(Module $module, Request $request): JsonResponse
     {
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not authenticated',
+                'error' => 'Authentication failed'
+            ], 401);
+        }
+        
         $userLanguage = $user->language ?? 'en';
         
         $this->authorize('view', $module);

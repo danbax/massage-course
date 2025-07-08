@@ -10,7 +10,7 @@ export const courseApi = {
   // Get all modules
   getModules: async () => {
     const response = await apiClient.get('/modules')
-    return response
+    return response.modules // Return just the modules array, not the whole response
   },
 
   // Get specific module
