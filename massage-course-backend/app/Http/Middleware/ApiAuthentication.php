@@ -10,19 +10,11 @@ class ApiAuthentication
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->bearerToken()) {
+        // Use the 'api' guard which is configured to use Sanctum
+        if (!auth('api')->check()) {
             return response()->json([
-                'message' => 'Authentication token is required',
-                'error' => 'Unauthenticated'
-            ], 401);
-        }
-
-        $user = $request->user();
-
-        if (!$user) {
-            return response()->json([
-                'message' => 'Invalid or expired token',
-                'error' => 'Unauthenticated'
+                'message' => 'Unauthenticated',
+                'error' => 'Authentication token is required or invalid'
             ], 401);
         }
 
