@@ -40,9 +40,11 @@ class ModuleController extends Controller
                 
                 $lesson->progress = [
                     'is_completed' => $progress ? $progress->is_completed : false,
-                    'progress_percentage' => $progress ? $progress->progress_percentage : 0,
-                    'time_spent' => $progress ? $progress->time_spent_minutes : 0,
-                    'last_accessed_at' => $progress ? $progress->updated_at : null
+                    'watch_percentage' => $progress ? $progress->watch_percentage : 0,
+                    'time_spent_minutes' => $progress ? $progress->watch_time_seconds / 60 : 0,
+                    'last_accessed_at' => $progress ? $progress->updated_at : null,
+                    'quiz_score' => $progress ? $progress->quiz_score : null,
+                    'quiz_attempts' => $progress ? $progress->quiz_attempts : 0
                 ];
                 
                 return $lesson;
@@ -52,18 +54,19 @@ class ModuleController extends Controller
         });
 
         // Get user's overall progress
-        $userProgress = $user->getCourseProgress();
+        $userProgress = $user->progress;
         
         return response()->json([
             'modules' => $modules,
             'progress' => [
-                'completed_lessons' => $userProgress->completed_lessons ?? 0,
-                'total_lessons' => $userProgress->total_lessons ?? Lesson::published()->count(),
-                'progress_percentage' => $userProgress->progress_percentage ?? 0,
-                'time_spent_minutes' => $userProgress->time_spent_minutes ?? 0,
+                'completed_lessons' => $userProgress ? $userProgress->completed_lessons : 0,
+                'total_lessons' => $userProgress ? $userProgress->total_lessons : 
+                    Lesson::where('language', $userLanguage)->published()->count(),
+                'progress_percentage' => $userProgress ? $userProgress->progress_percentage : 0,
+                'time_spent_minutes' => $userProgress ? $userProgress->time_spent_minutes : 0,
                 'is_completed' => $userProgress ? $userProgress->is_completed : false,
-                'started_at' => $userProgress->started_at ?? null,
-                'completed_at' => $userProgress->completed_at ?? null
+                'started_at' => $userProgress ? $userProgress->started_at : null,
+                'completed_at' => $userProgress ? $userProgress->completed_at : null
             ]
         ]);
     }
@@ -75,6 +78,8 @@ class ModuleController extends Controller
     {
         $user = $request->user();
         $userLanguage = $user->language ?? 'en';
+        
+        $this->authorize('view', $module);
         
         // Ensure the module is in the user's language
         if ($module->language !== $userLanguage) {
@@ -98,14 +103,18 @@ class ModuleController extends Controller
             
             $lesson->progress = [
                 'is_completed' => $progress ? $progress->is_completed : false,
-                'progress_percentage' => $progress ? $progress->progress_percentage : 0,
-                'time_spent' => $progress ? $progress->time_spent_minutes : 0,
-                'last_accessed_at' => $progress ? $progress->updated_at : null
+                'watch_percentage' => $progress ? $progress->watch_percentage : 0,
+                'time_spent_minutes' => $progress ? $progress->watch_time_seconds / 60 : 0,
+                'last_accessed_at' => $progress ? $progress->updated_at : null,
+                'quiz_score' => $progress ? $progress->quiz_score : null,
+                'quiz_attempts' => $progress ? $progress->quiz_attempts : 0
             ];
             
             return $lesson;
         });
 
-        return response()->json($module);
+        return response()->json([
+            'module' => $module
+        ]);
     }
 }

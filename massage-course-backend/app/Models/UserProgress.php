@@ -12,7 +12,6 @@ class UserProgress extends Model
 
     protected $fillable = [
         'user_id',
-        'course_id',
         'completed_lessons',
         'total_lessons',
         'progress_percentage',
@@ -42,14 +41,6 @@ class UserProgress extends Model
     }
 
     /**
-     * Get the course that owns the progress.
-     */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class);
-    }
-
-    /**
      * Get the last accessed lesson.
      */
     public function lastLesson(): BelongsTo
@@ -70,10 +61,15 @@ class UserProgress extends Model
      */
     public function updateProgress(): void
     {
-        $totalLessons = $this->course->lessons()->published()->count();
+        $userLanguage = $this->user->language ?? 'en';
+        
+        $totalLessons = Lesson::where('language', $userLanguage)
+            ->where('is_published', true)
+            ->count();
+            
         $completedLessons = LessonProgress::where('user_id', $this->user_id)
-            ->whereHas('lesson.module', function ($query) {
-                $query->where('course_id', $this->course_id);
+            ->whereHas('lesson', function ($query) use ($userLanguage) {
+                $query->where('language', $userLanguage);
             })
             ->where('is_completed', true)
             ->count();
@@ -110,5 +106,24 @@ class UserProgress extends Model
         }
 
         return sprintf('%dm', $minutes);
+    }
+
+    /**
+     * Mark the course as started.
+     */
+    public function markAsStarted(): void
+    {
+        if (!$this->started_at) {
+            $this->update(['started_at' => now()]);
+        }
+    }
+
+    /**
+     * Update last accessed lesson.
+     */
+    public function updateLastLesson(Lesson $lesson): void
+    {
+        $this->update(['last_lesson_id' => $lesson->id]);
+        $this->markAsStarted();
     }
 }

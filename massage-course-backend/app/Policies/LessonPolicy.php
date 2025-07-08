@@ -13,7 +13,7 @@ class LessonPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true; // All authenticated users can view lessons
+        return true;
     }
 
     /**
@@ -21,10 +21,13 @@ class LessonPolicy
      */
     public function view(User $user, Lesson $lesson): bool
     {
-        // Check if user is enrolled in the course
-        return $user->enrolledCourses()
-            ->where('course_id', $lesson->module->course_id)
-            ->exists() || $user->role === 'admin';
+        // Everyone has access to lessons in single course system
+        // But check if lesson is published and appropriate for user's language
+        if (!$lesson->is_published) {
+            return $user->role === 'admin' || $user->role === 'instructor';
+        }
+
+        return true;
     }
 
     /**
@@ -40,8 +43,7 @@ class LessonPolicy
      */
     public function update(User $user, Lesson $lesson): bool
     {
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
@@ -49,8 +51,7 @@ class LessonPolicy
      */
     public function delete(User $user, Lesson $lesson): bool
     {
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
@@ -74,18 +75,23 @@ class LessonPolicy
      */
     public function access(User $user, Lesson $lesson): bool
     {
-        // Admin can access any lesson
-        if ($user->role === 'admin') {
+        // Admin and instructors can access any lesson
+        if ($user->role === 'admin' || $user->role === 'instructor') {
             return true;
         }
 
-        // Check if user is enrolled in the course
-        if (!$user->enrolledCourses()->where('course_id', $lesson->module->course_id)->exists()) {
+        // Check if lesson is published
+        if (!$lesson->is_published) {
             return false;
         }
 
-        // Check prerequisites
-        return $this->checkPrerequisites($user, $lesson);
+        // Check if lesson is free or user has paid
+        if ($lesson->is_free) {
+            return true;
+        }
+
+        // Check if user has made a successful payment
+        return $user->payments()->where('status', 'succeeded')->exists();
     }
 
     /**
@@ -109,8 +115,7 @@ class LessonPolicy
      */
     public function uploadVideo(User $user, Lesson $lesson): bool
     {
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
@@ -120,18 +125,40 @@ class LessonPolicy
     {
         // Users can view their own progress, admins and instructors can view all progress
         return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id) ||
+               $user->role === 'instructor' ||
                $this->access($user, $lesson);
     }
 
     /**
-     * Check if user has completed prerequisites for the lesson
+     * Determine whether the user can take lesson quiz.
      */
-    private function checkPrerequisites(User $user, Lesson $lesson): bool
+    public function takeQuiz(User $user, Lesson $lesson): bool
     {
+        return $this->access($user, $lesson) && $lesson->has_quiz;
+    }
+
+    /**
+     * Determine whether the user can view lesson resources.
+     */
+    public function viewResources(User $user, Lesson $lesson): bool
+    {
+        return $this->access($user, $lesson);
+    }
+
+    /**
+     * Check if user has completed prerequisites for the lesson.
+     */
+    public function checkPrerequisites(User $user, Lesson $lesson): bool
+    {
+        // Admin and instructors bypass prerequisites
+        if ($user->role === 'admin' || $user->role === 'instructor') {
+            return true;
+        }
+
         // Get all lessons in the same module that come before this lesson
         $previousLessons = Lesson::where('module_id', $lesson->module_id)
             ->where('order', '<', $lesson->order)
+            ->where('is_published', true)
             ->pluck('id');
 
         if ($previousLessons->isEmpty()) {
@@ -141,9 +168,17 @@ class LessonPolicy
         // Check if user has completed all previous lessons
         $completedLessons = $user->lessonProgress()
             ->whereIn('lesson_id', $previousLessons)
-            ->where('completed', true)
+            ->where('is_completed', true)
             ->count();
 
         return $completedLessons === $previousLessons->count();
+    }
+
+    /**
+     * Determine whether the user can skip prerequisites.
+     */
+    public function skipPrerequisites(User $user, Lesson $lesson): bool
+    {
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 }

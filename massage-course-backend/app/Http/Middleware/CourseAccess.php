@@ -4,18 +4,16 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\CourseEnrollment;
 use Symfony\Component\HttpFoundation\Response;
 
 class CourseAccess
 {
     /**
-     * Handle an incoming request.
+     * Handle an incoming request - for single course system.
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        $courseId = $request->route('course') ?? $request->route('id');
 
         if (!$user) {
             return response()->json([
@@ -24,20 +22,22 @@ class CourseAccess
             ], 401);
         }
 
-        // Check if user is enrolled in the course
-        $enrollment = CourseEnrollment::where('user_id', $user->id)
-            ->where('course_id', $courseId)
-            ->first();
-
-        if (!$enrollment) {
-            return response()->json([
-                'message' => 'You are not enrolled in this course',
-                'error' => 'Course access denied'
-            ], 403);
+        // In single course system, check if user has paid for course access
+        // Admin and instructors have automatic access
+        if ($user->role === 'admin' || $user->role === 'instructor') {
+            return $next($request);
         }
 
-        // Add enrollment to request for use in controllers
-        $request->merge(['enrollment' => $enrollment]);
+        // Check if user has made a successful payment for course access
+        $hasAccess = $user->payments()->where('status', 'succeeded')->exists();
+
+        if (!$hasAccess) {
+            return response()->json([
+                'message' => 'Course access requires payment',
+                'error' => 'Payment required',
+                'payment_required' => true
+            ], 402); // Payment Required
+        }
 
         return $next($request);
     }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\ProcessPaymentRequest;
-use App\Models\Course;
 use App\Models\Payment;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +23,6 @@ class PaymentController extends Controller
         $user = $request->user();
         
         $payments = $user->payments()
-            ->with('course')
             ->orderBy('created_at', 'desc')
             ->paginate($request->per_page ?? 10);
 
@@ -44,61 +42,51 @@ class PaymentController extends Controller
      */
     public function createPaymentIntent(Request $request): JsonResponse
     {
-        $request->validate([
-            'course_id' => 'required|exists:courses,id'
-        ]);
-
         $user = $request->user();
-        $course = Course::findOrFail($request->course_id);
 
-        // Check if user is already enrolled
-        if ($user->isEnrolledIn($course)) {
+        // Check if user has already made a successful payment
+        $existingPayment = $user->payments()->where('status', 'succeeded')->first();
+        if ($existingPayment) {
             return response()->json([
-                'message' => 'Already enrolled in this course'
+                'message' => 'Already have access to the course'
             ], 409);
         }
 
-        // Check if course is free
-        if ($course->is_free) {
-            return response()->json([
-                'message' => 'This course is free - no payment required'
-            ], 400);
-        }
+        // Course price - this would typically come from settings or config
+        $coursePrice = 297.00; // Professional Relaxation Massage Therapy Course price
 
-        $paymentIntent = $this->paymentService->createPaymentIntent($user, $course);
+        $paymentIntent = $this->paymentService->createPaymentIntent($user, $coursePrice);
 
         return response()->json([
             'client_secret' => $paymentIntent['client_secret'],
             'payment_intent_id' => $paymentIntent['id'],
-            'amount' => $course->price,
-            'currency' => 'usd'
+            'amount' => $coursePrice,
+            'currency' => 'usd',
+            'description' => 'Professional Relaxation Massage Therapy Course'
         ]);
     }
 
     /**
-     * Confirm payment and complete enrollment.
+     * Confirm payment and complete course access.
      */
     public function confirmPayment(Request $request): JsonResponse
     {
         $request->validate([
-            'payment_intent_id' => 'required|string',
-            'course_id' => 'required|exists:courses,id'
+            'payment_intent_id' => 'required|string'
         ]);
 
         $user = $request->user();
-        $course = Course::findOrFail($request->course_id);
 
         try {
             $payment = $this->paymentService->confirmPayment(
                 $request->payment_intent_id,
-                $user,
-                $course
+                $user
             );
 
             return response()->json([
-                'message' => 'Payment confirmed and enrollment completed',
+                'message' => 'Payment confirmed and course access granted',
                 'payment' => $payment,
-                'enrolled' => true
+                'course_access' => true
             ]);
 
         } catch (\Exception $e) {
@@ -117,7 +105,7 @@ class PaymentController extends Controller
         $this->authorize('view', $payment);
 
         return response()->json([
-            'payment' => $payment->load('course')
+            'payment' => $payment
         ]);
     }
 
@@ -165,5 +153,20 @@ class PaymentController extends Controller
                 'error' => $e->getMessage()
             ], 400);
         }
+    }
+
+    /**
+     * Check if user has course access.
+     */
+    public function checkAccess(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $hasAccess = $user->payments()->where('status', 'succeeded')->exists();
+        
+        return response()->json([
+            'has_access' => $hasAccess,
+            'message' => $hasAccess ? 'Access granted' : 'Payment required for course access'
+        ]);
     }
 }

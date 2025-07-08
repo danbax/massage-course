@@ -2,33 +2,36 @@
 
 namespace App\Policies;
 
-use App\Models\Lesson;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class LessonPolicy
+class ModulePolicy
 {
     /**
-     * Determine whether the user can view any lessons.
+     * Determine whether the user can view any modules.
      */
     public function viewAny(User $user): bool
     {
-        return true; // All authenticated users can view lessons
+        return true;
     }
 
     /**
-     * Determine whether the user can view the lesson.
+     * Determine whether the user can view the module.
      */
-    public function view(User $user, Lesson $lesson): bool
+    public function view(User $user, Module $module): bool
     {
-        // Check if user is enrolled in the course
-        return $user->enrolledCourses()
-            ->where('course_id', $lesson->module->course_id)
-            ->exists() || $user->role === 'admin';
+        // Everyone has access to modules in single course system
+        // But check if module is published for regular users
+        if (!$module->is_published) {
+            return $user->role === 'admin' || $user->role === 'instructor';
+        }
+
+        return true;
     }
 
     /**
-     * Determine whether the user can create lessons.
+     * Determine whether the user can create modules.
      */
     public function create(User $user): bool
     {
@@ -36,114 +39,85 @@ class LessonPolicy
     }
 
     /**
-     * Determine whether the user can update the lesson.
+     * Determine whether the user can update the module.
      */
-    public function update(User $user, Lesson $lesson): bool
+    public function update(User $user, Module $module): bool
     {
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
-     * Determine whether the user can delete the lesson.
+     * Determine whether the user can delete the module.
      */
-    public function delete(User $user, Lesson $lesson): bool
+    public function delete(User $user, Module $module): bool
     {
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
-     * Determine whether the user can restore the lesson.
+     * Determine whether the user can restore the module.
      */
-    public function restore(User $user, Lesson $lesson): bool
+    public function restore(User $user, Module $module): bool
     {
         return $user->role === 'admin';
     }
 
     /**
-     * Determine whether the user can permanently delete the lesson.
+     * Determine whether the user can permanently delete the module.
      */
-    public function forceDelete(User $user, Lesson $lesson): bool
+    public function forceDelete(User $user, Module $module): bool
     {
         return $user->role === 'admin';
     }
 
     /**
-     * Determine whether the user can access lesson content.
+     * Determine whether the user can access module content.
      */
-    public function access(User $user, Lesson $lesson): bool
+    public function access(User $user, Module $module): bool
     {
-        // Admin can access any lesson
-        if ($user->role === 'admin') {
+        // Admin and instructors can access any module
+        if ($user->role === 'admin' || $user->role === 'instructor') {
             return true;
         }
 
-        // Check if user is enrolled in the course
-        if (!$user->enrolledCourses()->where('course_id', $lesson->module->course_id)->exists()) {
+        // Check if module is published
+        if (!$module->is_published) {
             return false;
         }
 
-        // Check prerequisites
-        return $this->checkPrerequisites($user, $lesson);
+        // In single course system, all users have access to published modules
+        return true;
     }
 
     /**
-     * Determine whether the user can mark lesson as completed.
+     * Determine whether the user can publish/unpublish the module.
      */
-    public function complete(User $user, Lesson $lesson): bool
+    public function publish(User $user, Module $module): bool
     {
-        return $this->access($user, $lesson);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
-     * Determine whether the user can view lesson video.
+     * Determine whether the user can reorder modules.
      */
-    public function viewVideo(User $user, Lesson $lesson): bool
+    public function reorder(User $user): bool
     {
-        return $this->access($user, $lesson);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
-     * Determine whether the user can upload lesson video.
+     * Determine whether the user can view module analytics.
      */
-    public function uploadVideo(User $user, Lesson $lesson): bool
+    public function viewAnalytics(User $user, Module $module): bool
     {
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id);
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 
     /**
-     * Determine whether the user can view lesson progress.
+     * Determine whether the user can duplicate the module.
      */
-    public function viewProgress(User $user, Lesson $lesson): bool
+    public function duplicate(User $user, Module $module): bool
     {
-        // Users can view their own progress, admins and instructors can view all progress
-        return $user->role === 'admin' || 
-               ($user->role === 'instructor' && $lesson->module->course->instructor_id === $user->id) ||
-               $this->access($user, $lesson);
-    }
-
-    /**
-     * Check if user has completed prerequisites for the lesson
-     */
-    private function checkPrerequisites(User $user, Lesson $lesson): bool
-    {
-        // Get all lessons in the same module that come before this lesson
-        $previousLessons = Lesson::where('module_id', $lesson->module_id)
-            ->where('order', '<', $lesson->order)
-            ->pluck('id');
-
-        if ($previousLessons->isEmpty()) {
-            return true; // No prerequisites
-        }
-
-        // Check if user has completed all previous lessons
-        $completedLessons = $user->lessonProgress()
-            ->whereIn('lesson_id', $previousLessons)
-            ->where('completed', true)
-            ->count();
-
-        return $completedLessons === $previousLessons->count();
+        return $user->role === 'admin' || $user->role === 'instructor';
     }
 }

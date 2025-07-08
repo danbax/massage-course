@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CertificateResource;
-use App\Models\Course;
 use App\Models\UserCertificate;
+use App\Models\Certificate;
 use App\Services\CertificateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +25,7 @@ class CertificateController extends Controller
         $user = $request->user();
         
         $certificates = $user->certificates()
-            ->with(['course', 'certificate'])
+            ->with('certificate')
             ->orderBy('issued_at', 'desc')
             ->paginate($request->per_page ?? 10);
 
@@ -48,7 +48,7 @@ class CertificateController extends Controller
         $this->authorize('view', $certificate);
 
         return response()->json([
-            'certificate' => new CertificateResource($certificate->load(['course', 'certificate']))
+            'certificate' => new CertificateResource($certificate->load('certificate'))
         ]);
     }
 
@@ -57,7 +57,7 @@ class CertificateController extends Controller
      */
     public function download(UserCertificate $certificate, Request $request): Response
     {
-        $this->authorize('view', $certificate);
+        $this->authorize('download', $certificate);
 
         $pdfPath = $this->certificateService->getCertificatePath($certificate);
         
@@ -72,31 +72,29 @@ class CertificateController extends Controller
     /**
      * Generate certificate for completed course.
      */
-    public function generate(Course $course, Request $request): JsonResponse
+    public function generate(Request $request): JsonResponse
     {
         $user = $request->user();
 
         // Check if user has completed the course
-        if (!$user->hasCompletedCourse($course)) {
+        if (!$user->hasCompletedCourse()) {
             return response()->json([
                 'message' => 'Course must be completed before generating certificate'
             ], 400);
         }
 
         // Check if certificate already exists
-        $existingCertificate = $user->certificates()
-            ->where('course_id', $course->id)
-            ->first();
+        $existingCertificate = $user->certificates()->first();
 
         if ($existingCertificate) {
             return response()->json([
-                'message' => 'Certificate already exists for this course',
+                'message' => 'Certificate already exists',
                 'certificate' => new CertificateResource($existingCertificate)
             ], 409);
         }
 
         // Generate new certificate
-        $certificate = $this->certificateService->generateCertificate($user, $course);
+        $certificate = $this->certificateService->generateCertificate($user);
 
         return response()->json([
             'message' => 'Certificate generated successfully',
@@ -110,7 +108,7 @@ class CertificateController extends Controller
     public function verify(string $code): JsonResponse
     {
         $certificate = UserCertificate::where('verification_code', $code)
-            ->with(['user', 'course'])
+            ->with('user')
             ->first();
 
         if (!$certificate) {
@@ -126,10 +124,44 @@ class CertificateController extends Controller
             'certificate' => [
                 'certificate_number' => $certificate->certificate_number,
                 'recipient_name' => $certificate->user->name,
-                'course_title' => $certificate->course->title,
+                'course_title' => 'Professional Relaxation Massage Therapy Course',
                 'issued_at' => $certificate->issued_at->format('F j, Y'),
                 'verification_code' => $certificate->verification_code
             ]
         ]);
+    }
+
+    /**
+     * Check if user is eligible for certificate.
+     */
+    public function checkEligibility(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $hasCompleted = $user->hasCompletedCourse();
+        $hasExisting = $user->certificates()->exists();
+        
+        return response()->json([
+            'eligible' => $hasCompleted && !$hasExisting,
+            'completed_course' => $hasCompleted,
+            'has_certificate' => $hasExisting,
+            'message' => $this->getEligibilityMessage($hasCompleted, $hasExisting)
+        ]);
+    }
+
+    /**
+     * Get eligibility message.
+     */
+    private function getEligibilityMessage(bool $hasCompleted, bool $hasExisting): string
+    {
+        if ($hasExisting) {
+            return 'Certificate already issued';
+        }
+        
+        if (!$hasCompleted) {
+            return 'Complete all lessons to earn your certificate';
+        }
+        
+        return 'Eligible for certificate generation';
     }
 }

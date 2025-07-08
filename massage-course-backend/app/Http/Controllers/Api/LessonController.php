@@ -10,6 +10,7 @@ use App\Models\LessonProgress;
 use App\Services\ProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LessonController extends Controller
 {
@@ -24,16 +25,14 @@ class LessonController extends Controller
     {
         $this->authorize('view', $lesson);
 
-        $lesson->load('module.course');
+        $lesson->load('module');
         
-        // Update last accessed for enrolled users
-        if ($request->user() && $request->user()->isEnrolledIn($lesson->module->course)) {
-            $enrollment = $request->user()->courseEnrollments()
-                ->where('course_id', $lesson->module->course->id)
-                ->first();
-            
-            if ($enrollment) {
-                $enrollment->updateLastAccessed();
+        // Update last accessed lesson for the user
+        $user = $request->user();
+        if ($user) {
+            $progress = $user->progress;
+            if ($progress) {
+                $progress->updateLastLesson($lesson);
             }
         }
 
@@ -49,8 +48,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        // Check if user has access to this lesson
-        $this->authorize('view', $lesson);
+        $this->authorize('access', $lesson);
 
         $progressData = $request->validated();
         
@@ -63,7 +61,7 @@ class LessonController extends Controller
         );
 
         // Update overall course progress
-        $this->progressService->updateCourseProgress($user, $lesson->module->course);
+        $this->progressService->updateUserProgress($user);
 
         return response()->json([
             'message' => 'Progress updated successfully',
@@ -78,7 +76,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('view', $lesson);
+        $this->authorize('access', $lesson);
 
         $lessonProgress = LessonProgress::updateOrCreate(
             [
@@ -92,12 +90,12 @@ class LessonController extends Controller
             ]
         );
 
-        // Update overall course progress
-        $this->progressService->updateCourseProgress($user, $lesson->module->course);
+        // Update overall progress
+        $this->progressService->updateUserProgress($user);
 
         // Check if course is now completed
-        $courseProgress = $user->getProgressForCourse($lesson->module->course);
-        $courseCompleted = $courseProgress && $courseProgress->is_completed;
+        $userProgress = $user->progress;
+        $courseCompleted = $userProgress && $userProgress->is_completed;
 
         return response()->json([
             'message' => 'Lesson marked as completed',
@@ -113,7 +111,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('view', $lesson);
+        $this->authorize('takeQuiz', $lesson);
 
         $request->validate([
             'answers' => 'required|array',
@@ -140,10 +138,10 @@ class LessonController extends Controller
             ]
         );
 
-        // Mark as completed if score is above passing threshold (e.g., 70%)
+        // Mark as completed if score is above passing threshold (70%)
         if ($score >= 70) {
             $lessonProgress->markAsCompleted();
-            $this->progressService->updateCourseProgress($user, $lesson->module->course);
+            $this->progressService->updateUserProgress($user);
         }
 
         return response()->json([
@@ -161,7 +159,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('view', $lesson);
+        $this->authorize('access', $lesson);
 
         $progress = LessonProgress::where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
@@ -179,7 +177,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('view', $lesson);
+        $this->authorize('access', $lesson);
 
         $request->validate([
             'notes' => 'nullable|string|max:5000'

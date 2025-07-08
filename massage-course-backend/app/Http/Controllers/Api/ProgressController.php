@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProgressResource;
-use App\Models\Course;
 use App\Models\Lesson;
 use App\Services\ProgressService;
 use Illuminate\Http\JsonResponse;
@@ -17,25 +16,31 @@ class ProgressController extends Controller
     ) {}
 
     /**
-     * Get user's overall progress across all courses.
+     * Get user's overall progress for the single course.
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        $userLanguage = $user->language ?? 'en';
         
-        $courseProgress = $user->courseProgress()
-            ->with(['course', 'lastLesson'])
-            ->orderBy('updated_at', 'desc')
-            ->paginate($request->per_page ?? 10);
+        $progress = $user->progress;
+        
+        if (!$progress) {
+            // Create initial progress record
+            $totalLessons = Lesson::where('language', $userLanguage)
+                ->where('is_published', true)
+                ->count();
+                
+            $progress = $user->progress()->create([
+                'completed_lessons' => 0,
+                'total_lessons' => $totalLessons,
+                'progress_percentage' => 0,
+                'time_spent_minutes' => 0
+            ]);
+        }
 
         return response()->json([
-            'progress' => ProgressResource::collection($courseProgress->items()),
-            'meta' => [
-                'current_page' => $courseProgress->currentPage(),
-                'last_page' => $courseProgress->lastPage(),
-                'per_page' => $courseProgress->perPage(),
-                'total' => $courseProgress->total()
-            ]
+            'progress' => new ProgressResource($progress)
         ]);
     }
 
@@ -45,25 +50,24 @@ class ProgressController extends Controller
     public function analytics(Request $request): JsonResponse
     {
         $user = $request->user();
-        $analytics = $this->progressService->getUserProgressAnalytics($user);
+        $userLanguage = $user->language ?? 'en';
+        
+        $analytics = $this->progressService->getUserProgressAnalytics($user, $userLanguage);
 
-        return response()->json(['analytics' => $analytics]);
+        return response()->json([
+            'analytics' => $analytics
+        ]);
     }
 
     /**
-     * Get progress for a specific course.
+     * Get detailed course progress with lessons.
      */
-    public function courseProgress(Course $course, Request $request): JsonResponse
+    public function courseProgress(Request $request): JsonResponse
     {
         $user = $request->user();
-
-        if (!$user->isEnrolledIn($course)) {
-            return response()->json([
-                'message' => 'Not enrolled in this course'
-            ], 403);
-        }
-
-        $progress = $user->getProgressForCourse($course);
+        $userLanguage = $user->language ?? 'en';
+        
+        $progress = $user->progress;
         
         if (!$progress) {
             return response()->json([
@@ -73,19 +77,26 @@ class ProgressController extends Controller
 
         // Get lesson-by-lesson progress
         $lessonProgress = $user->lessonProgress()
-            ->whereHas('lesson.module', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
+            ->whereHas('lesson', function ($query) use ($userLanguage) {
+                $query->where('language', $userLanguage);
             })
             ->with('lesson')
             ->get()
             ->keyBy('lesson_id');
 
-        $courseWithLessons = $course->load(['modules.lessons' => function ($query) {
-            $query->published()->ordered();
-        }]);
+        // Get modules with lessons
+        $modules = \App\Models\Module::where('language', $userLanguage)
+            ->published()
+            ->with(['lessons' => function ($query) use ($userLanguage) {
+                $query->published()
+                      ->where('language', $userLanguage)
+                      ->orderBy('order');
+            }])
+            ->orderBy('order')
+            ->get();
 
         // Add progress data to each lesson
-        foreach ($courseWithLessons->modules as $module) {
+        foreach ($modules as $module) {
             foreach ($module->lessons as $lesson) {
                 $lesson->progress = $lessonProgress->get($lesson->id);
             }
@@ -93,8 +104,8 @@ class ProgressController extends Controller
 
         return response()->json([
             'course_progress' => new ProgressResource($progress),
-            'course' => $courseWithLessons,
-            'completion_timeline' => $this->getCompletionTimeline($user, $course)
+            'modules' => $modules,
+            'completion_timeline' => $this->getCompletionTimeline($user, $userLanguage)
         ]);
     }
 
@@ -119,13 +130,48 @@ class ProgressController extends Controller
     }
 
     /**
-     * Get completion timeline for a course.
+     * Reset user progress.
      */
-    private function getCompletionTimeline($user, Course $course): array
+    public function reset(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $this->authorize('reset', $user->progress);
+        
+        // Reset lesson progress
+        $user->lessonProgress()->delete();
+        
+        // Reset overall progress
+        if ($user->progress) {
+            $userLanguage = $user->language ?? 'en';
+            $totalLessons = Lesson::where('language', $userLanguage)
+                ->where('is_published', true)
+                ->count();
+                
+            $user->progress->update([
+                'completed_lessons' => 0,
+                'total_lessons' => $totalLessons,
+                'progress_percentage' => 0,
+                'last_lesson_id' => null,
+                'time_spent_minutes' => 0,
+                'started_at' => null,
+                'completed_at' => null
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Progress reset successfully'
+        ]);
+    }
+
+    /**
+     * Get completion timeline for the course.
+     */
+    private function getCompletionTimeline($user, string $language): array
     {
         $completedLessons = $user->lessonProgress()
-            ->whereHas('lesson.module', function ($query) use ($course) {
-                $query->where('course_id', $course->id);
+            ->whereHas('lesson', function ($query) use ($language) {
+                $query->where('language', $language);
             })
             ->where('is_completed', true)
             ->with('lesson')

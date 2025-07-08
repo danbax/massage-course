@@ -1,138 +1,226 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { createContext, useContext, useEffect } from 'react'
 import { authApi } from '../api/auth'
-import apiClient, { ApiError } from '../lib/api'
+import apiClient from '../lib/api'
 
-const AuthContext = createContext()
+export const useAuthStore = create(
+  persist(
+    (set, get) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      isInitialized: false, // Add flag to prevent multiple initializations
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true) // Start with true to check initial auth state
-  const [error, setError] = useState(null)
+      login: async (credentials) => {
+        set({ isLoading: true, error: null })
+        try {
+          const response = await authApi.login(credentials)
+          const { user, token } = response
+          
+          apiClient.setAuthToken(token)
+          set({ 
+            user, 
+            token, 
+            isAuthenticated: true, 
+            isLoading: false,
+            error: null 
+          })
+          
+          return response
+        } catch (error) {
+          set({ 
+            error: error.message, 
+            isLoading: false,
+            isAuthenticated: false,
+            user: null,
+            token: null
+          })
+          throw error
+        }
+      },
 
-  // Check if user is already authenticated on app start
-  useEffect(() => {
-    const checkAuthState = async () => {
-      const token = apiClient.getAuthToken()
-      if (token) {
+      register: async (userData) => {
+        set({ isLoading: true, error: null })
+        try {
+          const response = await authApi.register(userData)
+          const { user, token } = response
+          
+          apiClient.setAuthToken(token)
+          set({ 
+            user, 
+            token, 
+            isAuthenticated: true, 
+            isLoading: false,
+            error: null 
+          })
+          
+          return response
+        } catch (error) {
+          set({ 
+            error: error.message, 
+            isLoading: false,
+            isAuthenticated: false,
+            user: null,
+            token: null
+          })
+          throw error
+        }
+      },
+
+      logout: async () => {
+        set({ isLoading: true })
+        try {
+          if (get().isAuthenticated) {
+            await authApi.logout()
+          }
+        } catch (error) {
+          console.error('Logout API failed:', error)
+        } finally {
+          apiClient.removeAuthToken()
+          set({ 
+            user: null, 
+            token: null, 
+            isAuthenticated: false, 
+            isLoading: false,
+            error: null,
+            isInitialized: false // Reset initialization flag on logout
+          })
+        }
+      },
+
+      refreshToken: async () => {
+        try {
+          const response = await authApi.refresh()
+          const { token } = response
+          
+          apiClient.setAuthToken(token)
+          set({ token })
+          
+          return response
+        } catch (error) {
+          // Clear auth state without calling logout to prevent loops
+          apiClient.removeAuthToken()
+          set({ 
+            user: null, 
+            token: null, 
+            isAuthenticated: false, 
+            isLoading: false,
+            error: null 
+          })
+          throw error
+        }
+      },
+
+      getCurrentUser: async () => {
+        if (!get().token) return null
+        
+        set({ isLoading: true })
         try {
           const response = await authApi.getCurrentUser()
-          setUser(response.user)
-          setIsAuthenticated(true)
-        } catch (err) {
-          // Token is invalid, remove it
+          set({ 
+            user: response.user, 
+            isAuthenticated: true, 
+            isLoading: false 
+          })
+          return response.user
+        } catch (error) {
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            isLoading: false,
+            token: null 
+          })
           apiClient.removeAuthToken()
-          setUser(null)
-          setIsAuthenticated(false)
+          return null
+        }
+      },
+
+      updateUser: (userData) => {
+        set(state => ({ 
+          user: { ...state.user, ...userData } 
+        }))
+      },
+
+      clearError: () => set({ error: null }),
+
+      initialize: async () => {
+        // Prevent multiple initializations
+        if (get().isInitialized) return
+        
+        set({ isLoading: true, isInitialized: true })
+        
+        const token = apiClient.getAuthToken()
+        if (token) {
+          set({ token })
+          await get().getCurrentUser()
+        } else {
+          set({ isLoading: false })
         }
       }
-      setIsLoading(false)
+    }),
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({ 
+        token: state.token,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      })
     }
+  )
+)
 
-    checkAuthState()
-  }, [])
-
-  const login = async (credentials) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await authApi.login(credentials)
-      
-      // Store token
-      apiClient.setAuthToken(response.token)
-      
-      // Set user data
-      setUser(response.user)
-      setIsAuthenticated(true)
-      
-      return response
-    } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Login failed'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
+// Hook wrapper for easier usage
+export const useAuth = () => {
+  const store = useAuthStore()
+  
+  return {
+    // State
+    user: store.user,
+    token: store.token,
+    isAuthenticated: store.isAuthenticated,
+    isLoading: store.isLoading,
+    error: store.error,
+    isInitialized: store.isInitialized,
+    
+    // Actions
+    login: store.login,
+    register: store.register,
+    logout: store.logout,
+    refreshToken: store.refreshToken,
+    getCurrentUser: store.getCurrentUser,
+    updateUser: store.updateUser,
+    clearError: store.clearError,
+    initialize: store.initialize
   }
+}
 
-  const register = async (userData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await authApi.register(userData)
-      
-      // Store token
-      apiClient.setAuthToken(response.token)
-      
-      // Set user data
-      setUser(response.user)
-      setIsAuthenticated(true)
-      
-      return response
-    } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Registration failed'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
+// Context for AuthProvider (optional, since Zustand provides global state)
+const AuthContext = createContext()
 
-  const logout = async () => {
-    setIsLoading(true)
-    try {
-      // Call logout API if user is authenticated
-      if (isAuthenticated) {
-        await authApi.logout()
-      }
-    } catch (err) {
-      // Even if logout API fails, we should still clear local state
-      console.error('Logout API failed:', err)
-    } finally {
-      // Clear local auth state
-      apiClient.removeAuthToken()
-      setUser(null)
-      setIsAuthenticated(false)
-      setError(null)
-      setIsLoading(false)
-    }
-  }
+// AuthProvider component for initialization and context
+export const AuthProvider = ({ children }) => {
+  const store = useAuthStore()
 
-  const refreshToken = async () => {
-    try {
-      const response = await authApi.refreshToken()
-      apiClient.setAuthToken(response.token)
-      return response
-    } catch (err) {
-      // If refresh fails, logout user
-      await logout()
-      throw err
-    }
-  }
-
-  const clearError = () => setError(null)
+  useEffect(() => {
+    // Initialize auth state on app start
+    store.initialize()
+  }, []) // Empty dependency array - only run once on mount
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated,
-      isLoading,
-      error,
-      login,
-      register,
-      logout,
-      refreshToken,
-      clearError
-    }}>
+    <AuthContext.Provider value={store}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => {
+// Optional: Hook to use AuthContext (though useAuth is preferred)
+export const useAuthContext = () => {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
+    throw new Error('useAuthContext must be used within an AuthProvider')
   }
   return context
 }

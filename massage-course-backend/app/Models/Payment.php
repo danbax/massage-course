@@ -12,7 +12,6 @@ class Payment extends Model
 
     protected $fillable = [
         'user_id',
-        'course_id',
         'stripe_payment_intent_id',
         'amount',
         'currency',
@@ -21,7 +20,6 @@ class Payment extends Model
         'payment_provider',
         'provider_transaction_id',
         'payment_data',
-        'metadata',
         'processed_at',
         'refunded_at',
         'refund_amount'
@@ -31,7 +29,6 @@ class Payment extends Model
         'amount' => 'decimal:2',
         'refund_amount' => 'decimal:2',
         'payment_data' => 'array',
-        'metadata' => 'array',
         'processed_at' => 'datetime',
         'refunded_at' => 'datetime',
         'created_at' => 'datetime',
@@ -51,14 +48,6 @@ class Payment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the course.
-     */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class);
     }
 
     /**
@@ -122,5 +111,21 @@ class Payment extends Model
             'refunded_at' => now(),
             'refund_amount' => $amount ?? $this->amount
         ]);
+    }
+
+    /**
+     * Get formatted amount.
+     */
+    public function getFormattedAmountAttribute(): string
+    {
+        return $this->currency . ' ' . number_format($this->amount, 2);
+    }
+
+    /**
+     * Get the payment description for the single course system.
+     */
+    public function getDescriptionAttribute(): string
+    {
+        return 'Professional Relaxation Massage Therapy Course';
     }
 }

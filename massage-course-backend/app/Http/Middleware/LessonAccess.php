@@ -5,13 +5,12 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Models\Lesson;
-use App\Models\CourseEnrollment;
 use Symfony\Component\HttpFoundation\Response;
 
 class LessonAccess
 {
     /**
-     * Handle an incoming request.
+     * Handle an incoming request for single course system.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -25,8 +24,8 @@ class LessonAccess
             ], 401);
         }
 
-        // Get the lesson with its module and course
-        $lesson = Lesson::with('module.course')->find($lessonId);
+        // Get the lesson with its module
+        $lesson = Lesson::with('module')->find($lessonId);
 
         if (!$lesson) {
             return response()->json([
@@ -35,55 +34,45 @@ class LessonAccess
             ], 404);
         }
 
-        // Check if user is enrolled in the course
-        $enrollment = CourseEnrollment::where('user_id', $user->id)
-            ->where('course_id', $lesson->module->course_id)
-            ->first();
-
-        if (!$enrollment) {
+        // Check if lesson is published
+        if (!$lesson->is_published && !in_array($user->role, ['admin', 'instructor'])) {
             return response()->json([
-                'message' => 'You are not enrolled in this course',
-                'error' => 'Lesson access denied'
+                'message' => 'Lesson not available',
+                'error' => 'Access denied'
             ], 403);
         }
 
-        // Check if lesson prerequisites are met
-        if (!$this->checkPrerequisites($user, $lesson)) {
-            return response()->json([
-                'message' => 'Prerequisites not met for this lesson',
-                'error' => 'Prerequisites required'
-            ], 403);
+        // Admin and instructors have full access
+        if (in_array($user->role, ['admin', 'instructor'])) {
+            return $next($request);
         }
 
-        // Add lesson and enrollment to request for use in controllers
-        $request->merge([
-            'lesson' => $lesson,
-            'enrollment' => $enrollment
-        ]);
+        // Check if lesson is free or user has paid
+        if (!$lesson->is_free) {
+            $hasAccess = $user->payments()->where('status', 'succeeded')->exists();
+            
+            if (!$hasAccess) {
+                return response()->json([
+                    'message' => 'This lesson requires course purchase',
+                    'error' => 'Payment required',
+                    'lesson_id' => $lesson->id,
+                    'is_free' => false
+                ], 402);
+            }
+        }
+
+        // Check language compatibility
+        $userLanguage = $user->language ?? 'en';
+        if ($lesson->language !== $userLanguage) {
+            return response()->json([
+                'message' => 'Lesson not available in your language',
+                'error' => 'Language mismatch'
+            ], 404);
+        }
+
+        // Add lesson to request for use in controllers
+        $request->merge(['lesson' => $lesson]);
 
         return $next($request);
-    }
-
-    /**
-     * Check if user has completed prerequisites for the lesson
-     */
-    private function checkPrerequisites($user, $lesson): bool
-    {
-        // Get all lessons in the same module that come before this lesson
-        $previousLessons = Lesson::where('module_id', $lesson->module_id)
-            ->where('order', '<', $lesson->order)
-            ->pluck('id');
-
-        if ($previousLessons->isEmpty()) {
-            return true; // No prerequisites
-        }
-
-        // Check if user has completed all previous lessons
-        $completedLessons = $user->lessonProgress()
-            ->whereIn('lesson_id', $previousLessons)
-            ->where('completed', true)
-            ->count();
-
-        return $completedLessons === $previousLessons->count();
     }
 }

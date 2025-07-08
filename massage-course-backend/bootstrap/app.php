@@ -22,6 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ApiSecurityHeaders::class,
             'throttle:api',
         ]);
+
+        // Register middleware aliases
+        $middleware->alias([
+            'api_auth' => \App\Http\Middleware\ApiAuthentication::class,
+            'course.access' => \App\Http\Middleware\CourseAccess::class,
+            'lesson.access' => \App\Http\Middleware\LessonAccess::class,
+            'admin.only' => \App\Http\Middleware\AdminOnly::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
