@@ -11,6 +11,9 @@ import SignIn from './pages/SignIn'
 import Register from './pages/Register'
 import LearnMore from './pages/LearnMore'
 import Purchase from './pages/Purchase'
+import TermsOfService from './pages/TermsOfService'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import ContactSupport from './pages/ContactSupport'
 import Dashboard from './pages/Dashboard'
 import Courses from './pages/Courses'
 import VideoPlayer from './pages/VideoPlayer'
@@ -42,6 +45,9 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/learn-more" element={<LearnMore />} />
               <Route path="/purchase" element={<Purchase />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/contact-support" element={<ContactSupport />} />
               <Route path="/app" element={
                 <ProtectedRoute>
                   <Layout />

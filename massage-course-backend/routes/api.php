@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\ContactController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +54,8 @@ Route::get('course', function () {
         'languages' => ['en', 'ru']
     ]);
 });
+
+Route::post('contact', [ContactController::class, 'store']);
 
 Route::middleware(['api_auth'])->group(function () {
     

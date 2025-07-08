@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../hooks/useLanguage'
 import LanguageSelector from '../components/ui/LanguageSelector'
@@ -31,6 +32,9 @@ import {
   FaStar,
   FaQuoteLeft,
   FaArrowRight,
+  FaArrowLeft,
+  FaChevronLeft,
+  FaChevronRight,
   FaHeart,
   FaShieldAlt,
   FaMedal,
@@ -42,6 +46,7 @@ const LandingPage = () => {
   const { login } = useAuth()
   const { t } = useLanguage()
   const isMobile = useBreakpointValue({ base: true, md: false })
+  const [currentSlide, setCurrentSlide] = useState(0)
 
   const handleStartTrial = () => {
     navigate('/purchase')
@@ -80,27 +85,77 @@ const LandingPage = () => {
 
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Licensed Massage Therapist",
-      content: "This course completely transformed my massage technique. The instructors are world-class and the content is incredibly detailed.",
-      avatar: "SJ",
+      name: "Sarah M.",
+      content: "I love how he guides us to practice and asks the right questions to improve. Finally learned proper hand positioning after years of doing it wrong!",
+      avatar: "SM",
       rating: 5
     },
     {
-      name: "Mike Chen",
-      role: "Wellness Center Owner",
-      content: "I've recommended this course to all my staff. The certification is recognized and the skills learned are immediately applicable.",
-      avatar: "MC",
+      name: "Mike T.",
+      content: "It really changes everything when you use body weight instead of just your hands. My clients notice the difference and I'm way less tired after sessions.",
+      avatar: "MT",
       rating: 5
     },
     {
-      name: "Emma Rodriguez",
-      role: "Physical Therapist",
-      content: "As a PT, this course gave me new perspectives on therapeutic massage. The anatomy section is particularly excellent.",
+      name: "Emma R.",
+      content: "The way he explains trigger points made it click for me. I was struggling with this one client's shoulder issue for months and this technique solved it in one session.",
       avatar: "ER",
+      rating: 5
+    },
+    {
+      name: "David L.",
+      content: "Best $200 I ever spent. I was about to quit massage therapy because my wrists were killing me. These techniques saved my career, honestly.",
+      avatar: "DL",
+      rating: 5
+    },
+    {
+      name: "Jessica H.",
+      content: "My income doubled after applying what I learned here. Clients are booking longer sessions and referring their friends. The deep tissue module is pure gold.",
+      avatar: "JH",
+      rating: 5
+    },
+    {
+      name: "Carlos M.",
+      content: "I thought I knew massage after 5 years in the field. This course showed me I was barely scratching the surface. Game changer for my practice.",
+      avatar: "CM",
+      rating: 5
+    },
+    {
+      name: "Amanda K.",
+      content: "Finally understanding fascia work changed how I approach every session. My regulars keep asking what I did differently - this is what I did differently!",
+      avatar: "AK",
+      rating: 5
+    },
+    {
+      name: "Robert S.",
+      content: "Used to take me 3-4 sessions to get results that I now achieve in one. My clients are amazed and I'm booked solid. This course literally transformed my business.",
+      avatar: "RS",
+      rating: 5
+    },
+    {
+      name: "Lisa P.",
+      content: "I was struggling with chronic pain clients until I learned these myofascial release techniques. Now I'm their go-to therapist and they refer everyone to me.",
+      avatar: "LP",
       rating: 5
     }
   ]
+
+  // Carousel navigation
+  const itemsPerSlide = 3
+  const totalSlides = Math.ceil(testimonials.length / itemsPerSlide)
+  
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % totalSlides)
+  }
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides)
+  }
+
+  const getCurrentTestimonials = () => {
+    const startIndex = currentSlide * itemsPerSlide
+    return testimonials.slice(startIndex, startIndex + itemsPerSlide)
+  }
 
   const stats = [
     { number: "40+", label: "Video Lessons", icon: FaPlay },
@@ -604,84 +659,137 @@ const LandingPage = () => {
                   maxW="2xl" 
                   className="text-balance"
                 >
-                  Join thousands of successful massage therapists worldwide
+                  Real stories from students who transformed their massage practice
                 </Text>
               </VStack>
             </motion.div>
 
-            <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={8} w="full">
-              {testimonials.map((testimonial, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.2 }}
+            <Box position="relative" w="full">
+              {/* Navigation Arrows */}
+              <Flex justify="space-between" align="center" mb={6}>
+                <IconButton
+                  aria-label="Previous testimonials"
+                  onClick={prevSlide}
+                  variant="ghost"
+                  size="lg"
+                  isRound
+                  bg="white"
+                  boxShadow="md"
+                  _hover={{ bg: "gray.50", transform: "scale(1.05)" }}
+                  transition="all 0.2s"
                 >
-                  <Box
-                    bg="white"
-                    borderRadius="2xl"
-                    p={8}
-                    boxShadow="lg"
-                    position="relative"
-                    className="glass-effect"
-                    _hover={{ 
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'xl'
-                    }}
-                    transition="all 0.3s"
+                  <FaChevronLeft />
+                </IconButton>
+                
+                <Text fontSize="sm" color="gray.500" fontWeight="500">
+                  {currentSlide + 1} of {totalSlides}
+                </Text>
+
+                <IconButton
+                  aria-label="Next testimonials"
+                  onClick={nextSlide}
+                  variant="ghost"
+                  size="lg"
+                  isRound
+                  bg="white"
+                  boxShadow="md"
+                  _hover={{ bg: "gray.50", transform: "scale(1.05)" }}
+                  transition="all 0.2s"
+                >
+                  <FaChevronRight />
+                </IconButton>
+              </Flex>
+
+              {/* Testimonials Grid */}
+              <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6} w="full">
+                {getCurrentTestimonials().map((testimonial, index) => (
+                  <motion.div
+                    key={`${currentSlide}-${index}`}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.5 }}
                   >
-                    <Icon 
-                      as={FaQuoteLeft} 
-                      color="primary.300" 
-                      w={8} 
-                      h={8} 
-                      mb={4}
-                      opacity={0.6}
-                    />
-                    
-                    <Text 
-                      color="gray.700" 
-                      lineHeight="relaxed-plus" 
-                      mb={6}
-                      fontStyle="italic"
+                    <Box
+                      bg="white"
+                      borderRadius="2xl"
+                      p={6}
+                      boxShadow="lg"
+                      position="relative"
+                      className="glass-effect"
+                      h="full"
+                      _hover={{ 
+                        transform: 'translateY(-4px)',
+                        boxShadow: 'xl'
+                      }}
+                      transition="all 0.3s"
                     >
-                      "{testimonial.content}"
-                    </Text>
-                    
-                    <HStack spacing={4}>
-                      <Box
-                        w={12}
-                        h={12}
-                        bg="gradient-primary"
-                        color="white"
-                        borderRadius="full"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        fontWeight="600"
-                        fontSize="lg"
+                      <Icon 
+                        as={FaQuoteLeft} 
+                        color="primary.300" 
+                        w={6} 
+                        h={6} 
+                        mb={4}
+                        opacity={0.6}
+                      />
+                      
+                      <Text 
+                        color="gray.700" 
+                        lineHeight="relaxed" 
+                        mb={6}
+                        fontStyle="italic"
+                        fontSize="sm"
                       >
-                        {testimonial.avatar}
-                      </Box>
-                      <Box flex={1}>
-                        <Text fontWeight="600" color="gray.900">
-                          {testimonial.name}
-                        </Text>
-                        <Text fontSize="sm" color="gray.500">
-                          {testimonial.role}
-                        </Text>
-                      </Box>
-                      <HStack spacing={1}>
-                        {[...Array(testimonial.rating)].map((_, i) => (
-                          <Icon key={i} as={FaStar} color="yellow.400" w={4} h={4} />
-                        ))}
+                        "{testimonial.content}"
+                      </Text>
+                      
+                      <HStack spacing={3}>
+                        <Box
+                          w={10}
+                          h={10}
+                          bg="gradient-primary"
+                          color="white"
+                          borderRadius="full"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          fontWeight="600"
+                          fontSize="sm"
+                        >
+                          {testimonial.avatar}
+                        </Box>
+                        <Box flex={1}>
+                          <Text fontWeight="600" color="gray.900" fontSize="sm">
+                            {testimonial.name}
+                          </Text>
+                        </Box>
+                        <HStack spacing={1}>
+                          {[...Array(testimonial.rating)].map((_, i) => (
+                            <Icon key={i} as={FaStar} color="yellow.400" w={3} h={3} />
+                          ))}
+                        </HStack>
                       </HStack>
-                    </HStack>
-                  </Box>
-                </motion.div>
-              ))}
-            </Grid>
+                    </Box>
+                  </motion.div>
+                ))}
+              </Grid>
+
+              {/* Dots Indicator */}
+              <Flex justify="center" mt={6} gap={2}>
+                {[...Array(totalSlides)].map((_, index) => (
+                  <Box
+                    key={index}
+                    w={3}
+                    h={3}
+                    borderRadius="full"
+                    bg={currentSlide === index ? "primary.500" : "gray.300"}
+                    cursor="pointer"
+                    onClick={() => setCurrentSlide(index)}
+                    transition="all 0.2s"
+                    _hover={{ transform: "scale(1.2)" }}
+                  />
+                ))}
+              </Flex>
+            </Box>
           </VStack>
         </Container>
       </Box>
@@ -840,9 +948,30 @@ const LandingPage = () => {
               </HStack>
             </motion.div>
             
-            <Text color="gray.400" fontSize="sm">
-              © 2024 Massage Academy. All rights reserved. • Terms of Service • Privacy Policy • Contact Support
-            </Text>
+            <HStack spacing={4} flexWrap="wrap" justify="center">
+              <Text color="gray.400" fontSize="sm">
+                © 2024 Massage Academy. All rights reserved.
+              </Text>
+              <HStack spacing={4} fontSize="sm">
+                <Link to="/terms-of-service">
+                  <Text color="gray.400" _hover={{ color: "white" }} transition="color 0.2s">
+                    Terms of Service
+                  </Text>
+                </Link>
+                <Text color="gray.600">•</Text>
+                <Link to="/privacy-policy">
+                  <Text color="gray.400" _hover={{ color: "white" }} transition="color 0.2s">
+                    Privacy Policy
+                  </Text>
+                </Link>
+                <Text color="gray.600">•</Text>
+                <Link to="/contact-support">
+                  <Text color="gray.400" _hover={{ color: "white" }} transition="color 0.2s">
+                    Contact Support
+                  </Text>
+                </Link>
+              </HStack>
+            </HStack>
           </VStack>
         </Container>
       </Box>
