@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthSelectors, useProgressSelectors, useUserSelectors } from '../hooks/storeSelectors'
-import { useProgressStore } from '../hooks/useProgressStore'
-import { useUserStore } from '../hooks/useUserStore'
-import { useAppStore } from '../hooks/useAppStore'
+import { useAuth } from '../hooks/useAuth'
+import { useCurrentUser, useProgressOverview, useProgressAnalytics } from '../hooks/useApi'
 import {
   Box,
   Container,
@@ -18,7 +16,9 @@ import {
   Progress,
   Icon,
   Button,
-  Flex
+  Flex,
+  Spinner,
+  Alert
 } from '@chakra-ui/react'
 import { 
   FaPlayCircle,
@@ -32,54 +32,65 @@ import {
 
 const Dashboard = () => {
   const navigate = useNavigate()
-  const { user } = useAuthSelectors()
-  const { progress, completionPercentage } = useProgressSelectors()
-  const { statistics } = useUserSelectors()
+  const { user } = useAuth()
   
-  const { fetchProgress } = useProgressStore()
-  const { fetchStatistics } = useUserStore()
-  const { language } = useAppStore()
+  // Fetch user data and progress
+  const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser()
+  const { data: progressData, isLoading: progressLoading, error: progressError } = useProgressOverview()
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useProgressAnalytics()
 
-  useEffect(() => {
-    const initializeDashboard = async () => {
-      await Promise.allSettled([
-        fetchProgress(),
-        fetchStatistics(),
-        fetchModules()
-      ])
-    }
-    
-    initializeDashboard()
-  }, [fetchProgress, fetchStatistics, fetchModules])
+  const isLoading = userLoading || progressLoading || analyticsLoading
+  const hasError = userError || progressError || analyticsError
+
+  if (isLoading) {
+    return (
+      <Container maxW="7xl" py={8}>
+        <Flex justify="center" align="center" minH="400px">
+          <Spinner size="xl" />
+        </Flex>
+      </Container>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <Container maxW="7xl" py={8}>
+        <Alert status="error">
+          <Alert.Icon />
+          Failed to load dashboard data. Please try again.
+        </Alert>
+      </Container>
+    )
+  }
 
   const stats = [
     {
       name: 'Lessons Completed',
-      value: progress?.completed_lessons || 0,
+      value: progressData?.completed_lessons || 0,
       icon: FaPlayCircle,
       color: 'blue',
-      change: '+2 this week'
+      change: analytics?.weekly_lessons_completed ? `+${analytics.weekly_lessons_completed} this week` : 'No progress this week'
     },
     {
       name: 'Study Time',
-      value: `${Math.round((statistics?.time_spent_minutes || 0) / 60)}h`,
+      value: `${Math.round((analytics?.total_time_spent || 0) / 60)}h`,
       icon: FaClock,
       color: 'purple',
-      change: '+45m this week'
+      change: analytics?.weekly_time_spent ? `+${Math.round(analytics.weekly_time_spent / 60)}h this week` : 'No study time this week'
     },
     {
       name: 'Progress',
-      value: `${completionPercentage}%`,
+      value: `${Math.round(progressData?.completion_percentage || 0)}%`,
       icon: FaChartLine,
       color: 'green',
-      change: '+15% this week'
+      change: analytics?.weekly_progress_increase ? `+${analytics.weekly_progress_increase}% this week` : 'No progress this week'
     },
     {
       name: 'Certificates',
-      value: statistics?.certificates_earned || 0,
+      value: userData?.certificates_count || 0,
       icon: FaTrophy,
       color: 'orange',
-      change: progress?.is_completed ? '+1 available' : 'Complete course'
+      change: progressData?.is_completed ? 'Certificate available' : 'Complete course to earn'
     }
   ]
 

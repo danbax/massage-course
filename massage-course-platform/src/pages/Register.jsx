@@ -54,16 +54,16 @@ const Register = () => {
     } catch (error) {
       console.error('Registration error:', error)
       
-      // Handle validation errors
-      if (error.isValidationError && error.data.errors) {
-        Object.keys(error.data.errors).forEach(field => {
+      // Handle Laravel validation errors
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        Object.keys(error.response.data.errors).forEach(field => {
           setError(field, {
             type: 'server',
-            message: error.data.errors[field][0]
+            message: error.response.data.errors[field][0]
           })
         })
       } else {
-        toast.error(error.message || 'Registration failed. Please try again.')
+        toast.error(error.response?.data?.message || 'Registration failed. Please try again.')
       }
     }
   }

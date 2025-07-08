@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authApi, profileApi } from '../api/auth'
-import { courseApi, lessonApi, progressApi } from '../api/courses'
-import { certificateApi, paymentApi, settingsApi } from '../api/services'
+import { courseApi, lessonApi } from '../api/courses'
+import { progressApi } from '../api/progress'
+import { certificateApi, paymentApi } from '../api/services'
+import { settingsApi } from '../api/settings'
 import toast from 'react-hot-toast'
 
 // Query Keys
@@ -224,6 +226,37 @@ export const useCourseProgress = (courseId) => {
   })
 }
 
+// Modules Hooks
+export const useModules = () => {
+  return useQuery({
+    queryKey: ['modules'],
+    queryFn: () => courseApi.getModules()
+  })
+}
+
+export const useModule = (moduleId) => {
+  return useQuery({
+    queryKey: ['modules', moduleId],
+    queryFn: () => courseApi.getModule(moduleId),
+    enabled: !!moduleId
+  })
+}
+
+// Progress Overview Hooks
+export const useProgressOverview = () => {
+  return useQuery({
+    queryKey: queryKeys.progress.overall,
+    queryFn: progressApi.getOverallProgress
+  })
+}
+
+export const useProgressCourse = () => {
+  return useQuery({
+    queryKey: queryKeys.progress.course('main'),
+    queryFn: progressApi.getCourseProgress
+  })
+}
+
 // Certificate Hooks
 export const useCertificates = () => {
   return useQuery({
@@ -314,7 +347,7 @@ export const useUpdateSettings = () => {
 export const useNotificationSettings = () => {
   return useQuery({
     queryKey: queryKeys.settings.notifications,
-    queryFn: settingsApi.getNotificationSettings
+    queryFn: settingsApi.getNotifications
   })
 }
 
@@ -322,7 +355,7 @@ export const useUpdateNotificationSettings = () => {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: settingsApi.updateNotificationSettings,
+    mutationFn: settingsApi.updateNotifications,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.notifications })
       toast.success('Notification preferences updated')

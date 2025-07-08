@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useCourse } from '../hooks/useCourse'
-import { useLanguage } from '../hooks/useLanguage'
 import { useState } from 'react'
+import { useModules, useProgressOverview } from '../hooks/useApi'
 import {
   Box,
   Container,
@@ -13,7 +12,10 @@ import {
   HStack,
   Button,
   Icon,
-  Badge
+  Badge,
+  Spinner,
+  Alert,
+  Flex
 } from '@chakra-ui/react'
 import { 
   FaPlay,
@@ -23,17 +25,50 @@ import {
   FaGraduationCap,
   FaBookOpen,
   FaChevronDown,
-  FaChevronUp
+  FaChevronUp,
+  FaLock
 } from 'react-icons/fa'
 
 const Courses = () => {
   const navigate = useNavigate()
-  const { lessons, getProgress, currentLesson } = useCourse()
-  const { t, currentLanguage } = useLanguage()
   const [expandedModules, setExpandedModules] = useState({ 0: true })
   
-  const progress = getProgress()
-  const completedLessons = lessons.filter(lesson => lesson.completed).length
+  // Fetch modules and progress data from API
+  const { data: modules, isLoading: modulesLoading, error: modulesError } = useModules()
+  const { data: progressData, isLoading: progressLoading, error: progressError } = useProgressOverview()
+  
+  const isLoading = modulesLoading || progressLoading
+  const hasError = modulesError || progressError
+  
+  if (isLoading) {
+    return (
+      <Container maxW="7xl" py={8}>
+        <Flex justify="center" align="center" minH="400px">
+          <Spinner size="xl" />
+        </Flex>
+      </Container>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <Container maxW="7xl" py={8}>
+        <Alert.Root status="error">
+          <Alert.Icon />
+          <Alert.Title>Failed to load course content. Please try again.</Alert.Title>
+        </Alert.Root>
+      </Container>
+    )
+  }
+
+  const completedLessons = modules?.reduce((total, module) => 
+    total + module.lessons.filter(lesson => lesson.progress?.is_completed).length, 0
+  ) || 0
+  
+  const totalLessons = modules?.reduce((total, module) => total + module.lessons.length, 0) || 0
+  const totalDuration = modules?.reduce((total, module) => 
+    total + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + (lesson.duration || 0), 0), 0
+  ) || 0
   
   const toggleModule = (moduleIndex) => {
     setExpandedModules(prev => ({
@@ -43,34 +78,31 @@ const Courses = () => {
   }
   
   const handleLessonClick = (lesson) => {
-    navigate(`/app/video/${lesson.id}`)
+    // Check if lesson is available (current or previous lessons completed)
+    const moduleIndex = modules.findIndex(m => m.lessons.some(l => l.id === lesson.id))
+    const lessonIndex = modules[moduleIndex].lessons.findIndex(l => l.id === lesson.id)
+    
+    // Allow access if it's the first lesson or if previous lessons are completed
+    const canAccess = lessonIndex === 0 || modules[moduleIndex].lessons
+      .slice(0, lessonIndex)
+      .every(prevLesson => prevLesson.progress?.is_completed)
+    
+    if (canAccess) {
+      navigate(`/app/video/${lesson.id}`)
+    }
   }
 
-  const getLessonStatus = (lesson) => {
-    if (lesson.completed) return 'completed'
-    return 'available'
+  const getLessonStatus = (lesson, moduleIndex, lessonIndex) => {
+    if (lesson.progress?.is_completed) return 'completed'
+    
+    // Check if lesson is accessible
+    const module = modules[moduleIndex]
+    const canAccess = lessonIndex === 0 || module.lessons
+      .slice(0, lessonIndex)
+      .every(prevLesson => prevLesson.progress?.is_completed)
+    
+    return canAccess ? 'available' : 'locked'
   }
-
-  const groupLessonsByModule = () => {
-    const modules = {}
-    lessons.forEach(lesson => {
-      const moduleId = lesson.moduleId || 1
-      const moduleName = lesson.module || 'General'
-      
-      if (!modules[moduleId]) {
-        modules[moduleId] = {
-          id: moduleId,
-          name: moduleName,
-          lessons: []
-        }
-      }
-      modules[moduleId].lessons.push(lesson)
-    })
-    return Object.values(modules)
-  }
-
-  const moduleData = groupLessonsByModule()
-  const totalDuration = lessons.reduce((sum, lesson) => sum + lesson.duration, 0)
 
   return (
     <Container maxW="7xl">
@@ -98,7 +130,7 @@ const Courses = () => {
                   
                   <HStack spacing={6} pt={2}>
                     <VStack align="start" spacing={1}>
-                      <Text fontSize="2xl" fontWeight="bold">{lessons.length}</Text>
+                      <Text fontSize="2xl" fontWeight="bold">{totalLessons}</Text>
                       <Text fontSize="sm" color="blue.200">Total Lessons</Text>
                     </VStack>
                     <VStack align="start" spacing={1}>
@@ -114,7 +146,7 @@ const Courses = () => {
                 
                 <VStack spacing={4}>
                   <Box w="full" textAlign="center">
-                    <Text fontSize="4xl" fontWeight="bold">{progress}%</Text>
+                    <Text fontSize="4xl" fontWeight="bold">{Math.round(progressData?.completion_percentage || 0)}%</Text>
                     <Text color="blue.200">Course Complete</Text>
                   </Box>
                   <Box w="full" bg="blue.600" borderRadius="full" h="3">
@@ -139,9 +171,9 @@ const Courses = () => {
             </Heading>
             
             <VStack spacing={4}>
-              {moduleData.map((module, moduleIndex) => {
-                const moduleProgress = module.lessons.filter(l => l.completed).length / module.lessons.length * 100
-                const moduleCompleted = module.lessons.filter(l => l.completed).length
+              {modules?.map((module, moduleIndex) => {
+                const moduleProgress = module.lessons.filter(l => l.progress?.is_completed).length / module.lessons.length * 100
+                const moduleCompleted = module.lessons.filter(l => l.progress?.is_completed).length
                 const isExpanded = expandedModules[moduleIndex]
                 
                 return (
@@ -202,7 +234,7 @@ const Courses = () => {
                       <Box pb={4} pt={0} px={6}>
                       <VStack spacing={3} align="stretch">
                         {module.lessons.map((lesson, lessonIndex) => {
-                          const status = getLessonStatus(lesson)
+                          const status = getLessonStatus(lesson, moduleIndex, lessonIndex)
                           
                           return (
                             <motion.div
@@ -212,19 +244,22 @@ const Courses = () => {
                               transition={{ delay: lessonIndex * 0.05 }}
                             >
                               <Box
-                                cursor="pointer"
-                                _hover={{ 
+                                cursor={status === 'locked' ? 'not-allowed' : 'pointer'}
+                                opacity={status === 'locked' ? 0.6 : 1}
+                                _hover={status !== 'locked' ? { 
                                   transform: 'translateY(-1px)', 
                                   boxShadow: 'md' 
-                                }}
+                                } : {}}
                                 transition="all 0.2s"
                                 onClick={() => handleLessonClick(lesson)}
                                 borderWidth="1px"
                                 borderColor={
-                                  status === 'completed' ? 'green.200' : 'blue.200'
+                                  status === 'completed' ? 'green.200' : 
+                                  status === 'locked' ? 'gray.200' : 'blue.200'
                                 }
                                 bg={
-                                  status === 'completed' ? 'green.50' : 'blue.50'
+                                  status === 'completed' ? 'green.50' : 
+                                  status === 'locked' ? 'gray.50' : 'blue.50'
                                 }
                                 borderRadius="lg"
                                 ml={4}
@@ -239,14 +274,18 @@ const Courses = () => {
                                       alignItems="center"
                                       justifyContent="center"
                                       bg={
-                                        status === 'completed' ? 'green.100' : 'blue.100'
+                                        status === 'completed' ? 'green.100' : 
+                                        status === 'locked' ? 'gray.100' : 'blue.100'
                                       }
                                       color={
-                                        status === 'completed' ? 'green.600' : 'blue.600'
+                                        status === 'completed' ? 'green.600' : 
+                                        status === 'locked' ? 'gray.600' : 'blue.600'
                                       }
                                     >
                                       {status === 'completed' ? (
                                         <Icon as={FaCheck} w={4} h={4} />
+                                      ) : status === 'locked' ? (
+                                        <Icon as={FaLock} w={3} h={3} />
                                       ) : (
                                         <Icon as={FaPlay} w={3} h={3} />
                                       )}
@@ -254,7 +293,7 @@ const Courses = () => {
                                     
                                     <VStack align="start" flex={1} spacing={1}>
                                       <Text fontWeight="medium" color="gray.900" fontSize="sm">
-                                        {lesson.title[currentLanguage]}
+                                        {lesson.title}
                                       </Text>
                                       <HStack spacing={3} fontSize="xs" color="gray.500">
                                         <HStack spacing={1}>

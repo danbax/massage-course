@@ -1,6 +1,12 @@
 import apiClient from '../lib/api'
 
 export const courseApi = {
+  // Get course information
+  getCourse: async () => {
+    const response = await apiClient.get('/course')
+    return response
+  },
+
   // Get all modules
   getModules: async () => {
     const response = await apiClient.get('/modules')

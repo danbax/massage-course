@@ -13,9 +13,9 @@ export const certificateApi = {
     return response
   },
 
-  // Generate certificate
-  generateCertificate: async (courseId) => {
-    const response = await apiClient.post('/certificates/generate', { course_id: courseId })
+  // Generate certificate (no courseId needed for single course)
+  generateCertificate: async () => {
+    const response = await apiClient.post('/certificates/generate')
     return response
   },
 
@@ -27,9 +27,9 @@ export const certificateApi = {
     return response
   },
 
-  // Check certificate eligibility
-  checkEligibility: async (courseId) => {
-    const response = await apiClient.get(`/certificates/eligibility?course_id=${courseId}`)
+  // Check certificate eligibility (no courseId needed)
+  checkEligibility: async () => {
+    const response = await apiClient.get('/certificates/eligibility')
     return response
   },
 
