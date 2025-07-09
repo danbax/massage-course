@@ -33,7 +33,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
   const navigationItems = [
     { name: 'Dashboard', href: '/app', icon: FaHome },
     { name: 'Courses', href: '/app/courses', icon: FaPlayCircle },
-    { name: 'Video', href: '/app/video/1', icon: FaVideo },
+    { name: 'Video', href: '/app/video', icon: FaVideo },
     { name: 'Progress', href: '/app/progress', icon: FaChartLine },
     { name: 'Certificates', href: '/app/certificates', icon: FaCertificate },
     { name: 'Profile', href: '/app/profile', icon: FaUser },

@@ -215,6 +215,56 @@ export const CourseProvider = ({ children }) => {
     return courseProgress?.completed_lessons || lessons.filter(lesson => lesson.completed).length
   }
 
+  const getLastWatchedLesson = () => {
+    // Strategy: 
+    // 1. Find lesson with highest progress that isn't completed (user was watching)
+    // 2. If all watched lessons are completed, find first incomplete lesson
+    // 3. If all lessons are completed, return the last lesson
+    // 4. If no progress exists, return the first lesson
+    
+    let lastWatched = null
+    let highestProgress = 0
+    let hasAnyProgress = false
+    
+    // Check for lessons with watch progress that aren't completed
+    Object.keys(watchProgress).forEach(lessonId => {
+      const progress = watchProgress[lessonId]
+      const lesson = lessons.find(l => l.id === parseInt(lessonId))
+      
+      if (lesson && progress > 0) {
+        hasAnyProgress = true
+        
+        // Prefer lessons that aren't completed but have progress
+        if (!lesson.completed && progress > highestProgress) {
+          highestProgress = progress
+          lastWatched = lesson
+        }
+      }
+    })
+    
+    // If no incomplete lesson with progress, find the first incomplete lesson
+    if (!lastWatched) {
+      lastWatched = lessons.find(lesson => !lesson.completed)
+    }
+    
+    // If all lessons are completed, return the last lesson
+    if (!lastWatched) {
+      lastWatched = lessons[lessons.length - 1]
+    }
+    
+    // Final fallback to first lesson
+    return lastWatched || lessons[0]
+  }
+
+  const getCurrentOrNextLesson = () => {
+    // Find the lesson marked as current, or the first incomplete lesson
+    const currentLesson = lessons.find(lesson => lesson.current)
+    if (currentLesson) return currentLesson
+    
+    const firstIncomplete = lessons.find(lesson => !lesson.completed)
+    return firstIncomplete || lessons[0]
+  }
+
   return (
     <CourseContext.Provider value={{
       lessons,
@@ -227,6 +277,8 @@ export const CourseProvider = ({ children }) => {
       getProgress,
       getTotalLessons,
       getCompletedLessons,
+      getLastWatchedLesson,
+      getCurrentOrNextLesson,
       refreshProgress,
       isLoading
     }}>

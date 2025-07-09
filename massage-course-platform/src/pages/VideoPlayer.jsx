@@ -46,6 +46,9 @@ const VideoPlayer = () => {
   const [isLoading, setIsLoading] = useState(true)
 
   const lesson = lessons.find(l => l.id === parseInt(lessonId))
+  
+  // Check if video URL is available
+  const hasValidVideo = lesson?.videoUrl && lesson.videoUrl !== null
 
   // Optimize mouse event handlers with useCallback
   const handleMouseEnter = useCallback(() => {
@@ -59,6 +62,8 @@ const VideoPlayer = () => {
   useEffect(() => {
     if (lesson) {
       setCurrentLesson(lesson)
+      // Reset loading state when lesson changes
+      setIsLoading(true)
     }
   }, [lesson, setCurrentLesson])
 
@@ -78,11 +83,26 @@ const VideoPlayer = () => {
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || !lesson || !hasValidVideo) {
+      // If no valid video, set loading to false immediately
+      if (!hasValidVideo) {
+        setIsLoading(false)
+      }
+      return
+    }
+
+    // Reset loading state for new lesson
+    setIsLoading(true)
+
+    // Safety timeout: if video doesn't load within 10 seconds, hide loading
+    const loadingTimeout = setTimeout(() => {
+      console.warn('Video loading timeout reached')
+      setIsLoading(false)
+    }, 10000)
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration)
-      setIsLoading(false)
+      // Don't set loading to false here, wait for canplay
     }
 
     const handleTimeUpdate = () => {
@@ -114,8 +134,22 @@ const VideoPlayer = () => {
     }
 
     const handleLoadStart = () => setIsLoading(true)
-    const handleCanPlay = () => setIsLoading(false)
-    const handleLoadedData = () => setIsLoading(false)
+    const handleCanPlay = () => {
+      // Video is ready to play
+      clearTimeout(loadingTimeout)
+      setIsLoading(false)
+    }
+    const handleLoadedData = () => {
+      // Additional safety for when video data is loaded
+      clearTimeout(loadingTimeout)
+      setIsLoading(false)
+    }
+
+    const handleError = () => {
+      clearTimeout(loadingTimeout)
+      setIsLoading(false)
+      toast.error('Error loading video. Please check the file path.')
+    }
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('timeupdate', handleTimeUpdate)
@@ -125,8 +159,10 @@ const VideoPlayer = () => {
     video.addEventListener('loadstart', handleLoadStart)
     video.addEventListener('canplay', handleCanPlay)
     video.addEventListener('loadeddata', handleLoadedData)
+    video.addEventListener('error', handleError)
 
     return () => {
+      clearTimeout(loadingTimeout)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('play', handlePlay)
@@ -135,8 +171,9 @@ const VideoPlayer = () => {
       video.removeEventListener('loadstart', handleLoadStart)
       video.removeEventListener('canplay', handleCanPlay)
       video.removeEventListener('loadeddata', handleLoadedData)
+      video.removeEventListener('error', handleError)
     }
-  }, [lesson?.id, updateWatchProgress]) // Remove progress from dependency array
+  }, [lesson?.id, hasValidVideo, updateWatchProgress])
 
   // Restore saved progress position when video loads
   useEffect(() => {
@@ -278,26 +315,59 @@ const VideoPlayer = () => {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            <video
-              ref={videoRef}
-              width="100%"
-              height="500px"
-              poster={lesson.thumbnail}
-              style={{ 
-                objectFit: 'cover',
-                backgroundColor: '#000'
-              }}
-              onError={(e) => {
-                console.error('Video error:', e)
-                toast.error('Error loading video. Please check the file path.')
-                setIsLoading(false)
-              }}
-            >
-              <source src={lesson.videoUrl} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            {hasValidVideo ? (
+              <video
+                ref={videoRef}
+                width="100%"
+                height="500px"
+                poster={lesson.thumbnail}
+                style={{ 
+                  objectFit: 'cover',
+                  backgroundColor: '#000'
+                }}
+                onError={(e) => {
+                  console.error('Video error:', e)
+                  toast.error('Error loading video. Please check the file path.')
+                  setIsLoading(false)
+                }}
+              >
+                <source src={lesson.videoUrl} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <Box
+                width="100%"
+                height="500px"
+                bg="gray.100"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexDirection="column"
+                gap={4}
+              >
+                <Box
+                  width="80px"
+                  height="80px"
+                  bg="gray.300"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FaPlay} w={8} h={8} color="gray.600" />
+                </Box>
+                <VStack spacing={2}>
+                  <Text fontSize="lg" fontWeight="medium" color="gray.600">
+                    Video not available
+                  </Text>
+                  <Text fontSize="sm" color="gray.500" textAlign="center">
+                    This lesson's video content will be available soon
+                  </Text>
+                </VStack>
+              </Box>
+            )}
 
-            {isLoading && (
+            {isLoading && hasValidVideo && (
               <Box
                 position="absolute"
                 top="0"
@@ -318,7 +388,7 @@ const VideoPlayer = () => {
               </Box>
             )}
 
-            {!isPlaying && !isLoading && (
+            {!isPlaying && !isLoading && hasValidVideo && (
               <Box
                 position="absolute"
                 top="0"
@@ -459,11 +529,11 @@ const VideoPlayer = () => {
         </Box>
 
         <Box
-          bg="white"
+          bg={lesson.completed ? "green.50" : "white"}
           borderRadius="2xl"
           boxShadow="lg"
           border="1px solid"
-          borderColor="gray.100"
+          borderColor={lesson.completed ? "green.200" : "gray.100"}
         >
           <Box p={6}>
             <Flex justify="space-between" align="start" mb={4} direction={{ base: "column", md: "row" }} gap={4}>
@@ -473,10 +543,17 @@ const VideoPlayer = () => {
                     {lesson.module}
                   </Text>
                   {lesson.completed && (
-                    <Badge colorScheme="green" variant="solid" fontSize="xs">
+                    <Badge 
+                      colorScheme="green" 
+                      variant="solid" 
+                      fontSize="xs"
+                      px={3}
+                      py={1}
+                      borderRadius="full"
+                    >
                       <HStack spacing={1}>
                         <Icon as={FaCheck} w={3} h={3} />
-                        <Text>Completed</Text>
+                        <Text fontWeight="bold">Completed</Text>
                       </HStack>
                     </Badge>
                   )}

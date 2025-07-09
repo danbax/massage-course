@@ -21,6 +21,7 @@ import Progress from './pages/Progress'
 import Certificates from './pages/Certificates'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import VideoRedirect from './components/VideoRedirect'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -55,6 +56,7 @@ function App() {
               }>
                 <Route index element={<Navigate to="/app/courses" replace />} />
                 <Route path="courses" element={<Courses />} />
+                <Route path="video" element={<VideoRedirect />} />
                 <Route path="video/:lessonId" element={<VideoPlayer />} />
                 <Route path="progress" element={<Progress />} />
                 <Route path="certificates" element={<Certificates />} />
