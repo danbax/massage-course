@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../hooks/useLanguage'
+import { settingsApi } from '../api/auth'
 import {
   Box,
   Container,
@@ -14,27 +16,65 @@ import {
 } from '@chakra-ui/react'
 import { 
   FaBell,
-  FaVideo,
   FaGlobe,
   FaShieldAlt
 } from 'react-icons/fa'
+import toast from 'react-hot-toast'
 
 const Settings = () => {
+  const { user, updateUser } = useAuth()
   const { currentLanguage, changeLanguage } = useLanguage()
+  
   const [settings, setSettings] = useState({
-    emailNotifications: true,
-    pushNotifications: false,
-    lessonReminders: true,
-    autoplayNext: true,
-    showSubtitles: false,
-    hdQuality: true
+    notifications: {
+      email_notifications: true,
+      course_reminders: true
+    },
+    preferences: {
+      auto_play_next: true,
+      video_quality: 'auto'
+    }
   })
+  const [isLoading, setIsLoading] = useState(false)
 
-  const toggleSetting = (key) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }))
+  // Load settings from backend
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true)
+      const response = await settingsApi.getSettings()
+      if (response.settings) {
+        setSettings(response.settings)
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const toggleSetting = async (category, key) => {
+    const newSettings = {
+      ...settings,
+      [category]: {
+        ...settings[category],
+        [key]: !settings[category][key]
+      }
+    }
+    
+    setSettings(newSettings)
+    
+    try {
+      await settingsApi.updateSettings(newSettings)
+      toast.success('Settings updated successfully! ✅')
+    } catch (error) {
+      // Revert on error
+      setSettings(settings)
+      toast.error(`Failed to update settings: ${error.message}`)
+    }
   }
 
   const settingsSections = [
@@ -42,43 +82,17 @@ const Settings = () => {
       title: 'Notifications',
       icon: FaBell,
       color: 'blue',
+      category: 'notifications',
       items: [
         {
-          key: 'emailNotifications',
+          key: 'email_notifications',
           title: 'Email Notifications',
           description: 'Receive course updates and announcements via email'
         },
         {
-          key: 'pushNotifications',
-          title: 'Push Notifications',
-          description: 'Get notifications directly in your browser'
-        },
-        {
-          key: 'lessonReminders',
-          title: 'Lesson Reminders',
+          key: 'course_reminders',
+          title: 'Course Reminders',
           description: 'Remind me to continue learning'
-        }
-      ]
-    },
-    {
-      title: 'Video Preferences',
-      icon: FaVideo,
-      color: 'purple',
-      items: [
-        {
-          key: 'autoplayNext',
-          title: 'Autoplay Next Video',
-          description: 'Automatically start the next lesson when current one ends'
-        },
-        {
-          key: 'showSubtitles',
-          title: 'Show Subtitles',
-          description: 'Display subtitles for all video content'
-        },
-        {
-          key: 'hdQuality',
-          title: 'HD Quality',
-          description: 'Play videos in high definition quality'
         }
       ]
     }
@@ -314,24 +328,6 @@ const Settings = () => {
                     </Text>
                     <Text fontSize="sm" color="gray.600">
                       Update your account password
-                    </Text>
-                  </VStack>
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  justifyContent="flex-start"
-                  p={4}
-                  h="auto"
-                  borderRadius="xl"
-                  _hover={{ bg: "gray.50" }}
-                >
-                  <VStack align="start" spacing={1}>
-                    <Text fontWeight="medium" color="gray.900">
-                      Two-Factor Authentication
-                    </Text>
-                    <Text fontSize="sm" color="gray.600">
-                      Add an extra layer of security to your account
                     </Text>
                   </VStack>
                 </Button>

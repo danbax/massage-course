@@ -1,35 +1,49 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../hooks/useLanguage'
+import { profileApi } from '../api/auth'
 import {
   Box,
   Container,
-  Grid,
   Heading,
   Text,
-  VStack,
-  HStack,
   Button,
   Input,
-  Textarea,
-  IconButton
+  Textarea
 } from '@chakra-ui/react'
 import { FaCamera } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 
 const Profile = () => {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const { t } = useLanguage()
   
   const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    bio: 'Passionate about massage therapy and helping others achieve wellness.',
-    location: 'New York, NY'
+    name: '',
+    email: '',
+    phone: '',
+    profession: '',
+    bio: '',
+    country: '',
+    city: ''
   })
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Initialize form data with user data
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        profession: user.profession || '',
+        bio: user.bio || '',
+        country: user.country || '',
+        city: user.city || ''
+      })
+    }
+  }, [user])
 
   const handleInputChange = (e) => {
     setFormData({
@@ -38,13 +52,41 @@ const Profile = () => {
     })
   }
 
-  const handleSave = () => {
-    toast.success('Profile updated successfully! ✅')
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      const response = await profileApi.updateProfile(formData)
+      updateUser(response.profile)
+      toast.success('Profile updated successfully! ✅')
+    } catch (error) {
+      toast.error(`Failed to update profile: ${error.response?.data?.message || error.message || 'An error occurred'}`)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const formatMemberSince = (date) => {
+    if (!date) return 'Recently joined'
+    return new Date(date).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long' 
+    })
+  }
+
+  const getDisplayLocation = () => {
+    if (formData.city && formData.country) {
+      return `${formData.city}, ${formData.country}`
+    } else if (formData.country) {
+      return formData.country
+    } else if (formData.city) {
+      return formData.city
+    }
+    return 'Location not specified'
   }
 
   return (
     <Container maxW="4xl">
-      <VStack spacing={8} align="stretch">
+      <Box>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -57,24 +99,34 @@ const Profile = () => {
             borderColor="gray.100"
           >
             <Box p={8}>
-              <HStack spacing={6}>
+              <Box display="flex" gap={6} alignItems="start">
                 <Box position="relative">
-                  <Box
-                    w="6rem"
-                    h="6rem"
-                    borderRadius="full"
-                    bg="linear-gradient(135deg, #0ea5e9, #a855f7)"
-                    color="white"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="2xl"
-                    fontWeight="bold"
-                  >
-                    {user?.name?.charAt(0) || 'U'}
-                  </Box>
-                  <IconButton
-                    icon={<FaCamera />}
+                  {user?.avatar_url ? (
+                    <Box
+                      w="6rem"
+                      h="6rem"
+                      borderRadius="full"
+                      bgImage={`url(${user.avatar_url})`}
+                      bgSize="cover"
+                      bgPosition="center"
+                    />
+                  ) : (
+                    <Box
+                      w="6rem"
+                      h="6rem"
+                      borderRadius="full"
+                      bg="linear-gradient(135deg, #0ea5e9, #a855f7)"
+                      color="white"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      fontSize="2xl"
+                      fontWeight="bold"
+                    >
+                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </Box>
+                  )}
+                  <Button
                     position="absolute"
                     bottom={0}
                     right={0}
@@ -85,21 +137,27 @@ const Profile = () => {
                     border="2px solid"
                     borderColor="gray.100"
                     aria-label="Change avatar"
-                  />
+                    minW="auto"
+                    w={8}
+                    h={8}
+                    p={0}
+                  >
+                    <FaCamera />
+                  </Button>
                 </Box>
                 
-                <VStack align="start" flex={1} spacing={2}>
-                  <Heading size="xl" color="gray.900">
-                    {formData.firstName} {formData.lastName}
+                <Box flex={1}>
+                  <Heading size="xl" color="gray.900" mb={2}>
+                    {formData.name || 'User'}
                   </Heading>
-                  <Text color="gray.600">
-                    Member since March 2024
+                  <Text color="gray.600" mb={1}>
+                    Member since {formatMemberSince(user?.created_at)}
                   </Text>
                   <Text color="gray.500">
-                    {formData.location}
+                    {getDisplayLocation()}
                   </Text>
-                </VStack>
-              </HStack>
+                </Box>
+              </Box>
             </Box>
           </Box>
         </motion.div>
@@ -110,67 +168,84 @@ const Profile = () => {
           boxShadow="lg"
           border="1px solid"
           borderColor="gray.100"
+          mt={8}
         >
           <Box p={8}>
             <Heading size="lg" color="gray.900" mb={6}>
               Personal Information
             </Heading>
             
-            <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={6}>
-              <VStack align="start" spacing={2}>
-                <Text fontWeight="medium">First Name</Text>
+            <Box display="grid" gridTemplateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={6}>
+              <Box>
+                <Text fontWeight="medium" mb={2}>Full Name</Text>
                 <Input
-                  name="firstName"
-                  value={formData.firstName}
+                  name="name"
+                  value={formData.name}
                   onChange={handleInputChange}
                   borderRadius="xl"
+                  placeholder="Enter your full name"
                 />
-              </VStack>
+              </Box>
               
-              <VStack align="start" spacing={2}>
-                <Text fontWeight="medium">Last Name</Text>
-                <Input
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  borderRadius="xl"
-                />
-              </VStack>
-              
-              <VStack align="start" spacing={2}>
-                <Text fontWeight="medium">Email Address</Text>
+              <Box>
+                <Text fontWeight="medium" mb={2}>Email Address</Text>
                 <Input
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   borderRadius="xl"
+                  placeholder="Enter your email"
                 />
-              </VStack>
+              </Box>
               
-              <VStack align="start" spacing={2}>
-                <Text fontWeight="medium">Phone Number</Text>
+              <Box>
+                <Text fontWeight="medium" mb={2}>Phone Number</Text>
                 <Input
                   name="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={handleInputChange}
                   borderRadius="xl"
+                  placeholder="Enter your phone number"
                 />
-              </VStack>
+              </Box>
               
-              <VStack align="start" spacing={2} gridColumn={{ md: "span 2" }}>
-                <Text fontWeight="medium">Location</Text>
+              <Box>
+                <Text fontWeight="medium" mb={2}>Profession</Text>
                 <Input
-                  name="location"
-                  value={formData.location}
+                  name="profession"
+                  value={formData.profession}
                   onChange={handleInputChange}
                   borderRadius="xl"
+                  placeholder="Enter your profession"
                 />
-              </VStack>
+              </Box>
+
+              <Box>
+                <Text fontWeight="medium" mb={2}>Country</Text>
+                <Input
+                  name="country"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  borderRadius="xl"
+                  placeholder="Enter your country"
+                />
+              </Box>
               
-              <VStack align="start" spacing={2} gridColumn={{ md: "span 2" }}>
-                <Text fontWeight="medium">Bio</Text>
+              <Box>
+                <Text fontWeight="medium" mb={2}>City</Text>
+                <Input
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  borderRadius="xl"
+                  placeholder="Enter your city"
+                />
+              </Box>
+              
+              <Box gridColumn={{ md: "span 2" }}>
+                <Text fontWeight="medium" mb={2}>Bio</Text>
                 <Textarea
                   name="bio"
                   value={formData.bio}
@@ -178,18 +253,25 @@ const Profile = () => {
                   rows={4}
                   borderRadius="xl"
                   resize="none"
+                  placeholder="Tell us about yourself..."
                 />
-              </VStack>
-            </Grid>
+              </Box>
+            </Box>
             
-            <HStack justify="end" mt={8}>
-              <Button onClick={handleSave} size="lg">
+            <Box display="flex" justifyContent="flex-end" mt={8}>
+              <Button 
+                onClick={handleSave} 
+                size="lg"
+                isLoading={isSaving}
+                loadingText="Saving..."
+                colorScheme="blue"
+              >
                 Save Changes
               </Button>
-            </HStack>
+            </Box>
           </Box>
         </Box>
-      </VStack>
+      </Box>
     </Container>
   )
 }
