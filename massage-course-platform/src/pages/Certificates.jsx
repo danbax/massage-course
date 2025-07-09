@@ -21,11 +21,11 @@ import {
 } from 'react-icons/fa'
 
 const Certificates = () => {
-  const { lessons, getProgress } = useCourse()
+  const { lessons, getProgress, getCompletedLessons } = useCourse()
   const { t } = useLanguage()
   
   const progress = getProgress()
-  const completedLessons = lessons.filter(lesson => lesson.completed).length
+  const completedLessons = getCompletedLessons()
 
   const certificates = [
     {

@@ -10,7 +10,8 @@ import {
   VStack,
   HStack,
   Icon,
-  Badge
+  Badge,
+  Button
 } from '@chakra-ui/react'
 import { 
   FaGraduationCap,
@@ -20,13 +21,45 @@ import {
 } from 'react-icons/fa'
 
 const ProgressPage = () => {
-  const { lessons, getProgress } = useCourse()
+  const { 
+    lessons, 
+    getProgress, 
+    getTotalLessons, 
+    getCompletedLessons, 
+    watchProgress, 
+    isLoading, 
+    refreshProgress,
+    courseProgress 
+  } = useCourse()
   const { t } = useLanguage()
 
-  const completedLessons = lessons.filter(lesson => lesson.completed).length
-  const totalLessons = lessons.length
+  if (isLoading) {
+    return (
+      <Container maxW="6xl">
+        <Box textAlign="center" py={20}>
+          <Heading color="gray.500">Loading progress...</Heading>
+        </Box>
+      </Container>
+    )
+  }
+
+  const completedLessons = getCompletedLessons()
+  const totalLessons = getTotalLessons()
   const remainingLessons = totalLessons - completedLessons
   const progress = getProgress()
+  
+  // Calculate estimated completion based on current pace
+  const getEstimatedCompletion = () => {
+    if (completedLessons === 0) return 'Get started!'
+    if (remainingLessons === 0) return 'Completed!'
+    
+    // Assume 2-3 lessons per week based on remaining lessons
+    const weeksRemaining = Math.ceil(remainingLessons / 2.5)
+    if (weeksRemaining === 1) return '1 week'
+    if (weeksRemaining < 4) return `${weeksRemaining} weeks`
+    if (weeksRemaining < 8) return `${Math.ceil(weeksRemaining / 4)} month${Math.ceil(weeksRemaining / 4) > 1 ? 's' : ''}`
+    return `${Math.ceil(weeksRemaining / 4)} months`
+  }
 
   const stats = [
     {
@@ -49,7 +82,7 @@ const ProgressPage = () => {
     },
     {
       name: 'Estimated Completion',
-      value: '2 weeks',
+      value: getEstimatedCompletion(),
       icon: FaCalendarAlt,
       color: 'purple'
     }
@@ -70,9 +103,20 @@ const ProgressPage = () => {
             borderColor="gray.100"
           >
             <Box p={8}>
-              <Heading size="xl" color="gray.900" mb={6}>
-                Learning Progress
-              </Heading>
+              <HStack justify="space-between" align="center" mb={6}>
+                <Heading size="xl" color="gray.900">
+                  Learning Progress
+                </Heading>
+                <Button
+                  onClick={refreshProgress}
+                  variant="outline"
+                  size="sm"
+                  isLoading={isLoading}
+                  loadingText="Refreshing..."
+                >
+                  Refresh Progress
+                </Button>
+              </HStack>
               
               <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={8} alignItems="center">
                 <VStack align="start" spacing={4}>
@@ -99,7 +143,10 @@ const ProgressPage = () => {
                   
                   <Text color="gray.600">
                     You've completed {completedLessons} out of {totalLessons} lessons.
-                    Keep up the great work!
+                    {courseProgress?.formatted_time_spent && (
+                      <> Time spent: {courseProgress.formatted_time_spent}.</>
+                    )}
+                    {' '}Keep up the great work!
                   </Text>
                 </VStack>
                 
@@ -247,19 +294,45 @@ const ProgressPage = () => {
                       <Text fontSize="sm" color="gray.600">
                         {lesson.duration} minutes
                       </Text>
+                      {watchProgress[lesson.id] && !lesson.completed && (
+                        <Box w="full" mt={2}>
+                          <HStack justify="space-between" mb={1}>
+                            <Text fontSize="xs" color="gray.500">Watch Progress</Text>
+                            <Text fontSize="xs" color="blue.600" fontWeight="medium">
+                              {Math.round(watchProgress[lesson.id])}%
+                            </Text>
+                          </HStack>
+                          <Box bg="gray.200" h="1.5" borderRadius="full">
+                            <Box
+                              bg="blue.500"
+                              h="full"
+                              borderRadius="full"
+                              width={`${watchProgress[lesson.id]}%`}
+                              transition="width 0.3s"
+                            />
+                          </Box>
+                        </Box>
+                      )}
                     </VStack>
                     
-                    <Badge
-                      colorScheme={
-                        lesson.completed 
-                          ? 'green' 
-                          : lesson.current 
-                          ? 'blue' 
-                          : 'gray'
-                      }
-                    >
-                      {lesson.completed ? 'Completed' : lesson.current ? 'Current' : 'Locked'}
-                    </Badge>
+                    <VStack align="end" spacing={1}>
+                      <Badge
+                        colorScheme={
+                          lesson.completed 
+                            ? 'green' 
+                            : lesson.current 
+                            ? 'blue' 
+                            : 'gray'
+                        }
+                      >
+                        {lesson.completed ? 'Completed' : lesson.current ? 'Current' : 'Locked'}
+                      </Badge>
+                      {lesson.completed && (
+                        <Text fontSize="xs" color="green.600">
+                          100% watched
+                        </Text>
+                      )}
+                    </VStack>
                   </HStack>
                 </motion.div>
               ))}

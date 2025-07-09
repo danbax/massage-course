@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCourse } from '../hooks/useCourse'
 import { useLanguage } from '../hooks/useLanguage'
@@ -12,7 +12,8 @@ import {
   HStack,
   Button,
   Icon,
-  Flex
+  Flex,
+  Badge
 } from '@chakra-ui/react'
 import { 
   FaPlay,
@@ -29,7 +30,7 @@ import toast from 'react-hot-toast'
 const VideoPlayer = () => {
   const { lessonId } = useParams()
   const navigate = useNavigate()
-  const { lessons, currentLesson, setCurrentLesson, markLessonComplete, updateWatchProgress } = useCourse()
+  const { lessons, currentLesson, setCurrentLesson, markLessonComplete, updateWatchProgress, watchProgress, isLoading: contextLoading } = useCourse()
   const { t, currentLanguage } = useLanguage()
   
   const videoRef = useRef(null)
@@ -46,11 +47,34 @@ const VideoPlayer = () => {
 
   const lesson = lessons.find(l => l.id === parseInt(lessonId))
 
+  // Optimize mouse event handlers with useCallback
+  const handleMouseEnter = useCallback(() => {
+    setShowControls(true)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    setShowControls(isPlaying ? false : true)
+  }, [isPlaying])
+
   useEffect(() => {
     if (lesson) {
       setCurrentLesson(lesson)
     }
   }, [lesson, setCurrentLesson])
+
+  // Save progress when component unmounts or lesson changes
+  useEffect(() => {
+    return () => {
+      if (lesson) {
+        // Get current progress from video element directly to avoid stale closure
+        const video = videoRef.current
+        if (video && video.duration && video.currentTime > 0) {
+          const currentProgress = (video.currentTime / video.duration) * 100
+          updateWatchProgress(lesson.id, currentProgress)
+        }
+      }
+    }
+  }, [lesson?.id, updateWatchProgress]) // Remove progress from dependency array
 
   useEffect(() => {
     const video = videoRef.current
@@ -79,8 +103,13 @@ const VideoPlayer = () => {
     const handlePause = () => setIsPlaying(false)
     const handleEnded = () => {
       setIsPlaying(false)
-      if (progress >= 80) {
-        toast.success('Video completed! Ready to mark as finished.')
+      // Check progress at the time of the event rather than using stale closure
+      const video = videoRef.current
+      if (video && video.duration) {
+        const currentProgress = (video.currentTime / video.duration) * 100
+        if (currentProgress >= 80) {
+          toast.success('Video completed! Ready to mark as finished.')
+        }
       }
     }
 
@@ -107,7 +136,24 @@ const VideoPlayer = () => {
       video.removeEventListener('canplay', handleCanPlay)
       video.removeEventListener('loadeddata', handleLoadedData)
     }
-  }, [lesson, updateWatchProgress, progress])
+  }, [lesson?.id, updateWatchProgress]) // Remove progress from dependency array
+
+  // Restore saved progress position when video loads
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !lesson || !duration) return
+
+    const savedProgress = watchProgress[lesson.id]
+    if (savedProgress && savedProgress > 0) {
+      const savedTime = (savedProgress / 100) * duration
+      // Only seek if we're not already at or past the saved position
+      if (Math.abs(video.currentTime - savedTime) > 1) {
+        video.currentTime = savedTime
+        setCurrentTime(savedTime)
+        setProgress(savedProgress)
+      }
+    }
+  }, [lesson?.id, duration, watchProgress])
 
   const togglePlay = () => {
     const video = videoRef.current
@@ -183,6 +229,16 @@ const VideoPlayer = () => {
     }
   }
 
+  if (contextLoading) {
+    return (
+      <Container maxW="6xl">
+        <Box textAlign="center" py={20}>
+          <Heading color="gray.500">Loading lesson...</Heading>
+        </Box>
+      </Container>
+    )
+  }
+
   if (!lesson) {
     return (
       <Container maxW="6xl">
@@ -219,8 +275,8 @@ const VideoPlayer = () => {
           <Box 
             ref={containerRef}
             position="relative"
-            onMouseEnter={() => setShowControls(true)}
-            onMouseLeave={() => setShowControls(isPlaying ? false : true)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <video
               ref={videoRef}
@@ -412,9 +468,24 @@ const VideoPlayer = () => {
           <Box p={6}>
             <Flex justify="space-between" align="start" mb={4} direction={{ base: "column", md: "row" }} gap={4}>
               <VStack align="start" flex={1} spacing={2}>
-                <Text fontSize="sm" color="blue.600" fontWeight="medium">
-                  {lesson.module}
-                </Text>
+                <HStack spacing={3}>
+                  <Text fontSize="sm" color="blue.600" fontWeight="medium">
+                    {lesson.module}
+                  </Text>
+                  {lesson.completed && (
+                    <Badge colorScheme="green" variant="solid" fontSize="xs">
+                      <HStack spacing={1}>
+                        <Icon as={FaCheck} w={3} h={3} />
+                        <Text>Completed</Text>
+                      </HStack>
+                    </Badge>
+                  )}
+                  {watchProgress[lesson.id] > 0 && !lesson.completed && (
+                    <Badge colorScheme="blue" variant="solid" fontSize="xs">
+                      {Math.round(watchProgress[lesson.id])}% watched
+                    </Badge>
+                  )}
+                </HStack>
                 <Heading size="lg" color="gray.900">
                   {lesson.title[currentLanguage]}
                 </Heading>

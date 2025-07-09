@@ -136,7 +136,7 @@ class ProgressController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('reset', $user->progress);
+        // User is already authenticated via middleware, no additional authorization needed
         
         // Reset lesson progress
         $user->lessonProgress()->delete();

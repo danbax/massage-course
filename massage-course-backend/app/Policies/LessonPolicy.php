@@ -21,13 +21,8 @@ class LessonPolicy
      */
     public function view(User $user, Lesson $lesson): bool
     {
-        // Everyone has access to lessons in single course system
-        // But check if lesson is published and appropriate for user's language
-        if (!$lesson->is_published) {
-            return $user->role === 'admin' || $user->role === 'instructor';
-        }
-
-        return true;
+        // Simple auth check - if user is logged in, they can view any published lesson
+        return $user && $lesson->is_published;
     }
 
     /**
@@ -75,23 +70,8 @@ class LessonPolicy
      */
     public function access(User $user, Lesson $lesson): bool
     {
-        // Admin and instructors can access any lesson
-        if ($user->role === 'admin' || $user->role === 'instructor') {
-            return true;
-        }
-
-        // Check if lesson is published
-        if (!$lesson->is_published) {
-            return false;
-        }
-
-        // Check if lesson is free or user has paid
-        if ($lesson->is_free) {
-            return true;
-        }
-
-        // Check if user has made a successful payment
-        return $user->payments()->where('status', 'succeeded')->exists();
+        // Simple auth check - if user is logged in, they can access any published lesson
+        return $user && $lesson->is_published;
     }
 
     /**

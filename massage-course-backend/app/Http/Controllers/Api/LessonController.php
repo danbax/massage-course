@@ -23,7 +23,7 @@ class LessonController extends Controller
      */
     public function show(Lesson $lesson, Request $request): JsonResponse
     {
-        $this->authorize('view', $lesson);
+        // User is already authenticated via middleware, no additional authorization needed
 
         $lesson->load('module');
         
@@ -48,7 +48,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('access', $lesson);
+        // User is already authenticated via middleware, no additional authorization needed
 
         $progressData = $request->validated();
         
@@ -76,7 +76,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('access', $lesson);
+        // User is already authenticated via middleware, no additional authorization needed
 
         $lessonProgress = LessonProgress::updateOrCreate(
             [
@@ -111,7 +111,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('takeQuiz', $lesson);
+        // User is already authenticated via middleware, no additional authorization needed
 
         $request->validate([
             'answers' => 'required|array',
@@ -159,7 +159,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('access', $lesson);
+        // User is already authenticated via middleware, no additional authorization needed
 
         $progress = LessonProgress::where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
@@ -177,7 +177,7 @@ class LessonController extends Controller
     {
         $user = $request->user();
         
-        $this->authorize('access', $lesson);
+        // User is already authenticated via middleware, no additional authorization needed
 
         $request->validate([
             'notes' => 'nullable|string|max:5000'

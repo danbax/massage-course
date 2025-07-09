@@ -321,6 +321,25 @@ const Courses = () => {
                                           <Text>HD Video</Text>
                                         </HStack>
                                       </HStack>
+                                      {lesson.progress?.watch_percentage > 0 && !lesson.progress?.is_completed && (
+                                        <Box w="full" mt={1}>
+                                          <HStack justify="space-between" align="center" mb={1}>
+                                            <Text fontSize="2xs" color="gray.400">Progress</Text>
+                                            <Text fontSize="2xs" color="blue.600" fontWeight="medium">
+                                              {Math.round(lesson.progress.watch_percentage)}%
+                                            </Text>
+                                          </HStack>
+                                          <Box bg="gray.200" h="1" borderRadius="full">
+                                            <Box
+                                              bg="blue.500"
+                                              h="full"
+                                              borderRadius="full"
+                                              width={`${lesson.progress.watch_percentage}%`}
+                                              transition="width 0.3s"
+                                            />
+                                          </Box>
+                                        </Box>
+                                      )}
                                     </VStack>
                                     
                                     <Button

@@ -25,6 +25,18 @@ export const progressApi = {
     return response
   },
 
+  // Update lesson progress
+  updateLessonProgress: async (lessonId, progressData) => {
+    const response = await apiClient.put(`/lessons/${lessonId}/progress`, progressData)
+    return response
+  },
+
+  // Mark lesson as completed
+  markLessonCompleted: async (lessonId) => {
+    const response = await apiClient.post(`/lessons/${lessonId}/complete`)
+    return response
+  },
+
   // Reset progress
   resetProgress: async () => {
     const response = await apiClient.post('/progress/reset')
