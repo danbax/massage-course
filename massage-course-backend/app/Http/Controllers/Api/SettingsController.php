@@ -15,25 +15,28 @@ class SettingsController extends Controller
     {
         $user = $request->user();
         
-        // Get user settings (you might want to create a UserSettings model)
+        // Get notification preferences from the user model
+        $notificationPrefs = $user->notification_preferences ?? [];
+        
+        // Build settings array from user data
         $settings = [
             'notifications' => [
-                'email_notifications' => true,
-                'push_notifications' => true,
-                'course_reminders' => true,
-                'progress_updates' => true,
-                'marketing_emails' => false
+                'email_notifications' => $notificationPrefs['email_notifications'] ?? true,
+                'push_notifications' => $notificationPrefs['push_notifications'] ?? true,
+                'course_reminders' => $notificationPrefs['course_reminders'] ?? true,
+                'progress_updates' => $notificationPrefs['progress_updates'] ?? true,
+                'marketing_emails' => $notificationPrefs['marketing_emails'] ?? false
             ],
             'privacy' => [
-                'profile_visibility' => 'public',
-                'show_progress' => true,
-                'show_certificates' => true
+                'profile_visibility' => $notificationPrefs['profile_visibility'] ?? 'public',
+                'show_progress' => $notificationPrefs['show_progress'] ?? true,
+                'show_certificates' => $notificationPrefs['show_certificates'] ?? true
             ],
             'preferences' => [
-                'language' => 'en',
-                'timezone' => 'UTC',
-                'video_quality' => 'auto',
-                'auto_play_next' => true
+                'language' => $user->language ?? 'en',
+                'timezone' => $user->timezone ?? 'UTC',
+                'video_quality' => $notificationPrefs['video_quality'] ?? 'auto',
+                'auto_play_next' => $notificationPrefs['auto_play_next'] ?? true
             ]
         ];
 
@@ -62,12 +65,67 @@ class SettingsController extends Controller
             'preferences.auto_play_next' => 'sometimes|boolean'
         ]);
 
-        // Here you would update the user settings
-        // For now, we'll just return success
+        $user = $request->user();
+        
+        // Get current notification preferences
+        $notificationPrefs = $user->notification_preferences ?? [];
+        
+        // Update notification preferences with new values
+        if (isset($validated['notifications'])) {
+            foreach ($validated['notifications'] as $key => $value) {
+                $notificationPrefs[$key] = $value;
+            }
+        }
+        
+        // Update privacy settings in notification preferences
+        if (isset($validated['privacy'])) {
+            foreach ($validated['privacy'] as $key => $value) {
+                $notificationPrefs[$key] = $value;
+            }
+        }
+        
+        // Update preferences (some go to notification_preferences, some to user fields)
+        if (isset($validated['preferences'])) {
+            foreach ($validated['preferences'] as $key => $value) {
+                if (in_array($key, ['language', 'timezone'])) {
+                    // Update user table directly
+                    $user->$key = $value;
+                } else {
+                    // Store in notification_preferences JSON
+                    $notificationPrefs[$key] = $value;
+                }
+            }
+        }
+        
+        // Save the updated data
+        $user->notification_preferences = $notificationPrefs;
+        $user->save();
+
+        // Return the updated settings in the same format as show()
+        $settings = [
+            'notifications' => [
+                'email_notifications' => $notificationPrefs['email_notifications'] ?? true,
+                'push_notifications' => $notificationPrefs['push_notifications'] ?? true,
+                'course_reminders' => $notificationPrefs['course_reminders'] ?? true,
+                'progress_updates' => $notificationPrefs['progress_updates'] ?? true,
+                'marketing_emails' => $notificationPrefs['marketing_emails'] ?? false
+            ],
+            'privacy' => [
+                'profile_visibility' => $notificationPrefs['profile_visibility'] ?? 'public',
+                'show_progress' => $notificationPrefs['show_progress'] ?? true,
+                'show_certificates' => $notificationPrefs['show_certificates'] ?? true
+            ],
+            'preferences' => [
+                'language' => $user->language ?? 'en',
+                'timezone' => $user->timezone ?? 'UTC',
+                'video_quality' => $notificationPrefs['video_quality'] ?? 'auto',
+                'auto_play_next' => $notificationPrefs['auto_play_next'] ?? true
+            ]
+        ];
 
         return response()->json([
             'message' => 'Settings updated successfully',
-            'settings' => $validated
+            'settings' => $settings
         ]);
     }
 

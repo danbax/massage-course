@@ -57,11 +57,14 @@ const Settings = () => {
   }
 
   const toggleSetting = async (category, key) => {
+    // Ensure the category exists
+    const currentCategorySettings = settings[category] || {}
+    
     const newSettings = {
       ...settings,
       [category]: {
-        ...settings[category],
-        [key]: !settings[category][key]
+        ...currentCategorySettings,
+        [key]: !currentCategorySettings[key]
       }
     }
     
@@ -255,11 +258,11 @@ const Settings = () => {
                           w="12"
                           h="6"
                           borderRadius="full"
-                          bg={settings[item.key] ? "blue.500" : "gray.300"}
+                          bg={settings[section.category]?.[item.key] ? "blue.500" : "gray.300"}
                           cursor="pointer"
                           position="relative"
                           transition="all 0.2s"
-                          onClick={() => toggleSetting(item.key)}
+                          onClick={() => toggleSetting(section.category, item.key)}
                         >
                           <Box
                             w="5"
@@ -268,7 +271,7 @@ const Settings = () => {
                             bg="white"
                             position="absolute"
                             top="0.5"
-                            left={settings[item.key] ? "6" : "0.5"}
+                            left={settings[section.category]?.[item.key] ? "6" : "0.5"}
                             transition="all 0.2s"
                             boxShadow="sm"
                           />
