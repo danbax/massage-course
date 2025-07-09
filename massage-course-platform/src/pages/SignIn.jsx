@@ -22,10 +22,8 @@ import {
   FaEye, 
   FaEyeSlash, 
   FaGoogle, 
-  FaFacebook, 
   FaArrowLeft,
-  FaExclamationTriangle,
-  FaCheck
+  FaExclamationTriangle
 } from 'react-icons/fa'
 
 const SignIn = () => {
@@ -33,7 +31,6 @@ const SignIn = () => {
   const location = useLocation()
   const { login, isLoading, error, clearError } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   
   const {
     register,
@@ -167,15 +164,6 @@ const SignIn = () => {
                   >
                     Continue with Google
                   </Button>
-                  <Button
-                    leftIcon={<FaFacebook />}
-                    w="full"
-                    colorScheme="facebook"
-                    isLoading={isLoading}
-                    onClick={() => handleSocialLogin('Facebook')}
-                  >
-                    Continue with Facebook
-                  </Button>
                 </VStack>
 
                 <HStack w="full">
@@ -256,43 +244,6 @@ const SignIn = () => {
                         )}
                       </Box>
 
-                      <HStack justify="space-between" w="full">
-                        {/* Custom Checkbox */}
-                        <HStack 
-                          spacing={2} 
-                          cursor="pointer"
-                          onClick={() => setRememberMe(!rememberMe)}
-                        >
-                          <Box
-                            w={4}
-                            h={4}
-                            borderRadius="sm"
-                            border="2px solid"
-                            borderColor={rememberMe ? "blue.500" : "gray.300"}
-                            bg={rememberMe ? "blue.500" : "white"}
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            transition="all 0.2s"
-                          >
-                            {rememberMe && (
-                              <Box color="white">
-                                <FaCheck size={10} />
-                              </Box>
-                            )}
-                          </Box>
-                          <Text fontSize="sm" color="gray.600">
-                            Remember me
-                          </Text>
-                        </HStack>
-                        
-                        <Link to="/forgot-password">
-                          <Text fontSize="sm" color="blue.500" fontWeight="600">
-                            Forgot password?
-                          </Text>
-                        </Link>
-                      </HStack>
-
                       <Button
                         type="submit"
                         size="lg"
@@ -309,20 +260,17 @@ const SignIn = () => {
                       >
                         Sign In
                       </Button>
+
+                      <Box textAlign="center" w="full">
+                        <Link to="/forgot-password">
+                          <Text fontSize="sm" color="blue.500" fontWeight="600">
+                            Forgot password?
+                          </Text>
+                        </Link>
+                      </Box>
                     </VStack>
                   </form>
                 </Box>
-
-                <VStack spacing={2} textAlign="center">
-                  <Text fontSize="sm" color="gray.600">
-                    Don't have an account?{' '}
-                    <Link to="/register">
-                      <Text as="span" color="blue.500" fontWeight="600">
-                        Sign up here
-                      </Text>
-                    </Link>
-                  </Text>
-                </VStack>
               </VStack>
             </Box>
           </Box>
