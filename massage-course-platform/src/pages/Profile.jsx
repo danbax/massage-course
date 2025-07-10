@@ -30,7 +30,6 @@ const Profile = () => {
   })
   const [isSaving, setIsSaving] = useState(false)
 
-  // Initialize form data with user data
   useEffect(() => {
     if (user) {
       setFormData({
@@ -57,16 +56,16 @@ const Profile = () => {
     try {
       const response = await profileApi.updateProfile(formData)
       updateUser(response.profile)
-      toast.success('Profile updated successfully! ✅')
+      toast.success(t('profile.profileUpdated'))
     } catch (error) {
-      toast.error(`Failed to update profile: ${error.response?.data?.message || error.message || 'An error occurred'}`)
+      toast.error(t('profile.profileUpdateFailed'))
     } finally {
       setIsSaving(false)
     }
   }
 
   const formatMemberSince = (date) => {
-    if (!date) return 'Recently joined'
+    if (!date) return t('profile.recentlyJoined')
     return new Date(date).toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long' 
@@ -81,7 +80,7 @@ const Profile = () => {
     } else if (formData.city) {
       return formData.city
     }
-    return 'Location not specified'
+    return t('profile.locationNotSpecified')
   }
 
   return (
@@ -136,7 +135,7 @@ const Profile = () => {
                     boxShadow="md"
                     border="2px solid"
                     borderColor="gray.100"
-                    aria-label="Change avatar"
+                    aria-label={t('profile.changeAvatar')}
                     minW="auto"
                     w={8}
                     h={8}
@@ -151,7 +150,7 @@ const Profile = () => {
                     {formData.name || 'User'}
                   </Heading>
                   <Text color="gray.600" mb={1}>
-                    Member since {formatMemberSince(user?.created_at)}
+                    {t('profile.memberSince', { date: formatMemberSince(user?.created_at) })}
                   </Text>
                   <Text color="gray.500">
                     {getDisplayLocation()}
@@ -172,80 +171,80 @@ const Profile = () => {
         >
           <Box p={8}>
             <Heading size="lg" color="gray.900" mb={6}>
-              Personal Information
+              {t('profile.personalInformation')}
             </Heading>
             
             <Box display="grid" gridTemplateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={6}>
               <Box>
-                <Text fontWeight="medium" mb={2}>Full Name</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.fullName')}</Text>
                 <Input
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
                   borderRadius="xl"
-                  placeholder="Enter your full name"
+                  placeholder={t('profile.fullNamePlaceholder')}
                 />
               </Box>
               
               <Box>
-                <Text fontWeight="medium" mb={2}>Email Address</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.emailAddress')}</Text>
                 <Input
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   borderRadius="xl"
-                  placeholder="Enter your email"
+                  placeholder={t('profile.emailPlaceholder')}
                 />
               </Box>
               
               <Box>
-                <Text fontWeight="medium" mb={2}>Phone Number</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.phoneNumber')}</Text>
                 <Input
                   name="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={handleInputChange}
                   borderRadius="xl"
-                  placeholder="Enter your phone number"
+                  placeholder={t('profile.phonePlaceholder')}
                 />
               </Box>
               
               <Box>
-                <Text fontWeight="medium" mb={2}>Profession</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.profession')}</Text>
                 <Input
                   name="profession"
                   value={formData.profession}
                   onChange={handleInputChange}
                   borderRadius="xl"
-                  placeholder="Enter your profession"
+                  placeholder={t('profile.professionPlaceholder')}
                 />
               </Box>
 
               <Box>
-                <Text fontWeight="medium" mb={2}>Country</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.country')}</Text>
                 <Input
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
                   borderRadius="xl"
-                  placeholder="Enter your country"
+                  placeholder={t('profile.countryPlaceholder')}
                 />
               </Box>
               
               <Box>
-                <Text fontWeight="medium" mb={2}>City</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.city')}</Text>
                 <Input
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
                   borderRadius="xl"
-                  placeholder="Enter your city"
+                  placeholder={t('profile.cityPlaceholder')}
                 />
               </Box>
               
               <Box gridColumn={{ md: "span 2" }}>
-                <Text fontWeight="medium" mb={2}>Bio</Text>
+                <Text fontWeight="medium" mb={2}>{t('profile.bio')}</Text>
                 <Textarea
                   name="bio"
                   value={formData.bio}
@@ -253,7 +252,7 @@ const Profile = () => {
                   rows={4}
                   borderRadius="xl"
                   resize="none"
-                  placeholder="Tell us about yourself..."
+                  placeholder={t('profile.bioPlaceholder')}
                 />
               </Box>
             </Box>
@@ -263,10 +262,10 @@ const Profile = () => {
                 onClick={handleSave} 
                 size="lg"
                 isLoading={isSaving}
-                loadingText="Saving..."
+                loadingText={t('profile.saving')}
                 colorScheme="blue"
               >
-                Save Changes
+                {t('profile.saveChanges')}
               </Button>
             </Box>
           </Box>

@@ -37,7 +37,7 @@ const ProgressPage = () => {
     return (
       <Container maxW="6xl">
         <Box textAlign="center" py={20}>
-          <Heading color="gray.500">Loading progress...</Heading>
+          <Heading color="gray.500">{t('progress.loadingProgress')}</Heading>
         </Box>
       </Container>
     )
@@ -48,40 +48,38 @@ const ProgressPage = () => {
   const remainingLessons = totalLessons - completedLessons
   const progress = getProgress()
   
-  // Calculate estimated completion based on current pace
   const getEstimatedCompletion = () => {
-    if (completedLessons === 0) return 'Get started!'
-    if (remainingLessons === 0) return 'Completed!'
+    if (completedLessons === 0) return t('progress.estimatedTime.getStarted')
+    if (remainingLessons === 0) return t('progress.estimatedTime.completed')
     
-    // Assume 2-3 lessons per week based on remaining lessons
     const weeksRemaining = Math.ceil(remainingLessons / 2.5)
-    if (weeksRemaining === 1) return '1 week'
-    if (weeksRemaining < 4) return `${weeksRemaining} weeks`
-    if (weeksRemaining < 8) return `${Math.ceil(weeksRemaining / 4)} month${Math.ceil(weeksRemaining / 4) > 1 ? 's' : ''}`
-    return `${Math.ceil(weeksRemaining / 4)} months`
+    if (weeksRemaining === 1) return t('progress.estimatedTime.week')
+    if (weeksRemaining < 4) return t('progress.estimatedTime.weeks', { weeks: weeksRemaining })
+    if (weeksRemaining < 8) return t('progress.estimatedTime.months', { months: Math.ceil(weeksRemaining / 4) })
+    return t('progress.estimatedTime.months', { months: Math.ceil(weeksRemaining / 4) })
   }
 
   const stats = [
     {
-      name: 'Total Lessons',
+      name: t('progress.stats.totalLessons'),
       value: totalLessons,
       icon: FaGraduationCap,
       color: 'blue'
     },
     {
-      name: 'Completed',
+      name: t('progress.stats.completed'),
       value: completedLessons,
       icon: FaCheckCircle,
       color: 'green'
     },
     {
-      name: 'Remaining',
+      name: t('progress.stats.remaining'),
       value: remainingLessons,
       icon: FaClock,
       color: 'orange'
     },
     {
-      name: 'Estimated Completion',
+      name: t('progress.stats.estimatedCompletion'),
       value: getEstimatedCompletion(),
       icon: FaCalendarAlt,
       color: 'purple'
@@ -105,16 +103,16 @@ const ProgressPage = () => {
             <Box p={8}>
               <HStack justify="space-between" align="center" mb={6}>
                 <Heading size="xl" color="gray.900">
-                  Learning Progress
+                  {t('progress.title')}
                 </Heading>
                 <Button
                   onClick={refreshProgress}
                   variant="outline"
                   size="sm"
                   isLoading={isLoading}
-                  loadingText="Refreshing..."
+                  loadingText={t('progress.refreshing')}
                 >
-                  Refresh Progress
+                  {t('progress.refreshProgress')}
                 </Button>
               </HStack>
               
@@ -122,7 +120,7 @@ const ProgressPage = () => {
                 <VStack align="start" spacing={4}>
                   <HStack justify="space-between" w="full">
                     <Text fontSize="lg" fontWeight="medium" color="gray.900">
-                      Overall Progress
+                      {t('progress.overallProgress')}
                     </Text>
                     <Text fontSize="3xl" fontWeight="bold" color="blue.600">
                       {progress}%
@@ -142,11 +140,11 @@ const ProgressPage = () => {
                   </Box>
                   
                   <Text color="gray.600">
-                    You've completed {completedLessons} out of {totalLessons} lessons.
+                    {t('progress.completedLessons', { completed: completedLessons, total: totalLessons })}
                     {courseProgress?.formatted_time_spent && (
-                      <> Time spent: {courseProgress.formatted_time_spent}.</>
+                      <> {t('progress.timeSpent', { time: courseProgress.formatted_time_spent })}</>
                     )}
-                    {' '}Keep up the great work!
+                    {' '}{t('progress.keepUpWork')}
                   </Text>
                 </VStack>
                 
@@ -252,7 +250,7 @@ const ProgressPage = () => {
         >
           <Box p={6}>
             <Heading size="lg" color="gray.900" mb={6}>
-              Lesson by Lesson Progress
+              {t('progress.lessonProgress.title')}
             </Heading>
             
             <VStack spacing={4} align="stretch">
@@ -292,12 +290,12 @@ const ProgressPage = () => {
                         {lesson.title.en}
                       </Text>
                       <Text fontSize="sm" color="gray.600">
-                        {lesson.duration} minutes
+                        {lesson.duration} {t('courses.lesson.minutes')}
                       </Text>
                       {watchProgress[lesson.id] && !lesson.completed && (
                         <Box w="full" mt={2}>
                           <HStack justify="space-between" mb={1}>
-                            <Text fontSize="xs" color="gray.500">Watch Progress</Text>
+                            <Text fontSize="xs" color="gray.500">{t('progress.lessonProgress.watchProgress')}</Text>
                             <Text fontSize="xs" color="blue.600" fontWeight="medium">
                               {Math.round(watchProgress[lesson.id])}%
                             </Text>
@@ -325,11 +323,11 @@ const ProgressPage = () => {
                             : 'gray'
                         }
                       >
-                        {lesson.completed ? 'Completed' : lesson.current ? 'Current' : 'Locked'}
+                        {lesson.completed ? t('course.completed') : lesson.current ? t('progress.lessonProgress.current') : t('progress.lessonProgress.locked')}
                       </Badge>
                       {lesson.completed && (
                         <Text fontSize="xs" color="green.600">
-                          100% watched
+                          100% {t('progress.lessonProgress.watched')}
                         </Text>
                       )}
                     </VStack>

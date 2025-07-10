@@ -23,7 +23,7 @@ import toast from 'react-hot-toast'
 
 const Settings = () => {
   const { user, updateUser } = useAuth()
-  const { currentLanguage, changeLanguage } = useLanguage()
+  const { currentLanguage, changeLanguage, t, syncLanguageWithServer } = useLanguage()
   
   const [settings, setSettings] = useState({
     notifications: {
@@ -37,7 +37,6 @@ const Settings = () => {
   })
   const [isLoading, setIsLoading] = useState(false)
 
-  // Load settings from backend
   useEffect(() => {
     loadSettings()
   }, [])
@@ -57,7 +56,6 @@ const Settings = () => {
   }
 
   const toggleSetting = async (category, key) => {
-    // Ensure the category exists
     const currentCategorySettings = settings[category] || {}
     
     const newSettings = {
@@ -72,30 +70,40 @@ const Settings = () => {
     
     try {
       await settingsApi.updateSettings(newSettings)
-      toast.success('Settings updated successfully! ✅')
+      toast.success(t('settings.settingsUpdated'))
     } catch (error) {
-      // Revert on error
       setSettings(settings)
-      toast.error(`Failed to update settings: ${error.message}`)
+      toast.error(t('settings.settingsUpdateFailed'))
+    }
+  }
+
+  const handleLanguageChange = async (lang) => {
+    await changeLanguage(lang)
+    if (user) {
+      try {
+        await syncLanguageWithServer(settingsApi)
+      } catch (error) {
+        console.error('Failed to sync language with server:', error)
+      }
     }
   }
 
   const settingsSections = [
     {
-      title: 'Notifications',
+      title: t('settings.notifications'),
       icon: FaBell,
       color: 'blue',
       category: 'notifications',
       items: [
         {
           key: 'email_notifications',
-          title: 'Email Notifications',
-          description: 'Receive course updates and announcements via email'
+          title: t('settings.emailNotifications'),
+          description: t('settings.emailNotificationsDesc')
         },
         {
           key: 'course_reminders',
-          title: 'Course Reminders',
-          description: 'Remind me to continue learning'
+          title: t('settings.courseReminders'),
+          description: t('settings.courseRemindersDesc')
         }
       ]
     }
@@ -110,10 +118,10 @@ const Settings = () => {
         >
           <VStack spacing={2} align="start">
             <Heading size="xl" color="gray.900">
-              Settings
+              {t('settings.title')}
             </Heading>
             <Text color="gray.600">
-              Manage your account preferences and course settings
+              {t('settings.subtitle')}
             </Text>
           </VStack>
         </motion.div>
@@ -145,13 +153,13 @@ const Settings = () => {
                   <Icon as={FaGlobe} w={5} h={5} />
                 </Box>
                 <Heading size="md" color="gray.900">
-                  Language & Region
+                  {t('settings.languageRegion')}
                 </Heading>
               </HStack>
               
               <VStack align="start" spacing={3}>
                 <Text fontSize="sm" fontWeight="medium" color="gray.700">
-                  Interface Language
+                  {t('settings.interfaceLanguage')}
                 </Text>
                 <Box
                   position="relative"
@@ -172,7 +180,10 @@ const Settings = () => {
                     justifyContent="space-between"
                   >
                     <Text fontSize="sm">
-                      {currentLanguage === 'en' ? 'English' : 'Русский'}
+                      {currentLanguage === 'en' && t('settings.english')}
+                      {currentLanguage === 'ru' && t('settings.russian')}
+                      {currentLanguage === 'de' && t('settings.german')}
+                      {currentLanguage === 'uk' && t('settings.ukrainian')}
                     </Text>
                     <Icon 
                       as={FaGlobe} 
@@ -192,10 +203,12 @@ const Settings = () => {
                     opacity={0}
                     cursor="pointer"
                     value={currentLanguage}
-                    onChange={(e) => changeLanguage(e.target.value)}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
                   >
-                    <option value="en">English</option>
-                    <option value="ru">Русский</option>
+                    <option value="en">{t('settings.english')}</option>
+                    <option value="ru">{t('settings.russian')}</option>
+                    <option value="de">{t('settings.german')}</option>
+                    <option value="uk">{t('settings.ukrainian')}</option>
                   </Box>
                 </Box>
               </VStack>
@@ -312,7 +325,7 @@ const Settings = () => {
                   <Icon as={FaShieldAlt} w={5} h={5} />
                 </Box>
                 <Heading size="md" color="gray.900">
-                  Security & Privacy
+                  {t('settings.securityPrivacy')}
                 </Heading>
               </HStack>
               
@@ -327,10 +340,10 @@ const Settings = () => {
                 >
                   <VStack align="start" spacing={1}>
                     <Text fontWeight="medium" color="gray.900">
-                      Change Password
+                      {t('settings.changePassword')}
                     </Text>
                     <Text fontSize="sm" color="gray.600">
-                      Update your account password
+                      {t('settings.changePasswordDesc')}
                     </Text>
                   </VStack>
                 </Button>
@@ -346,10 +359,10 @@ const Settings = () => {
                 >
                   <VStack align="start" spacing={1}>
                     <Text fontWeight="medium">
-                      Delete Account
+                      {t('settings.deleteAccount')}
                     </Text>
                     <Text fontSize="sm" color="red.600">
-                      Permanently delete your account and all data
+                      {t('settings.deleteAccountDesc')}
                     </Text>
                   </VStack>
                 </Button>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useLanguage } from '../hooks/useLanguage'
 import iconImage from '../assets/icon.png'
 import {
   Box,
@@ -39,6 +40,7 @@ import toast from 'react-hot-toast'
 const Purchase = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useLanguage()
   const [selectedPlan, setSelectedPlan] = useState('lifetime')
   const [paymentMethod, setPaymentMethod] = useState('card')
   const [isLoading, setIsLoading] = useState(false)
@@ -70,7 +72,7 @@ const Purchase = () => {
         avatar: formData.firstName.charAt(0) + formData.lastName.charAt(0)
       })
       
-      toast.success('🎉 Welcome to Massage Academy! Your course is now ready.')
+      toast.success(t('purchase.purchaseSuccess'))
       navigate('/app/courses')
       setIsLoading(false)
     }, 2000)
@@ -79,37 +81,37 @@ const Purchase = () => {
   const features = [
     {
       icon: FaPlay,
-      title: '40+ HD Video Lessons',
-      description: 'Professional demonstrations with expert instruction'
+      title: t('purchase.features.videoLessons.title'),
+      description: t('purchase.features.videoLessons.description')
     },
     {
       icon: FaGraduationCap,
-      title: 'Professional Certification',
-      description: 'Internationally recognized certificate upon completion'
+      title: t('purchase.features.certification.title'),
+      description: t('purchase.features.certification.description')
     },
     {
       icon: FaClock,
-      title: 'Lifetime Access',
-      description: 'Learn at your own pace, access content forever'
+      title: t('purchase.features.lifetimeAccess.title'),
+      description: t('purchase.features.lifetimeAccess.description')
     },
     {
       icon: FaUsers,
-      title: 'Expert Support',
-      description: 'Get help from certified massage therapy professionals'
+      title: t('purchase.features.expertSupport.title'),
+      description: t('purchase.features.expertSupport.description')
     }
   ]
 
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Licensed Massage Therapist",
-      content: "This course changed my career completely. Now I'm running my own practice!",
+      name: t('purchase.testimonials.sarah.name'),
+      role: t('purchase.testimonials.sarah.role'),
+      content: t('purchase.testimonials.sarah.content'),
       rating: 5
     },
     {
-      name: "Mike Chen",
-      role: "Wellness Center Owner",
-      content: "The best investment I made. My skills improved dramatically.",
+      name: t('purchase.testimonials.mike.name'),
+      role: t('purchase.testimonials.mike.role'),
+      content: t('purchase.testimonials.mike.content'),
       rating: 5
     }
   ]
@@ -117,39 +119,26 @@ const Purchase = () => {
   const plans = [
     {
       id: 'basic',
-      name: 'Basic Access',
+      name: t('purchase.plans.basic.name'),
       price: 15,
       originalPrice: 30,
       period: 'one-time',
-      features: [
-        '30 Video Lessons',
-        'Basic Certification',
-        '6 Month Access',
-        'Email Support'
-      ],
+      features: t('purchase.plans.basic.features'),
       popular: false
     },
     {
       id: 'lifetime',
-      name: 'Lifetime Access',
+      name: t('purchase.plans.lifetime.name'),
       price: 20,
       originalPrice: 50,
       period: 'one-time',
-      features: [
-        '40+ Video Lessons',
-        'Professional Certification',
-        'Lifetime Access',
-        'Priority Support',
-        'Bonus Materials',
-        'Future Updates'
-      ],
+      features: t('purchase.plans.lifetime.features'),
       popular: true
     }
   ]
 
   return (
     <Box bg="white" minH="100vh">
-      {/* Header */}
       <Box py={4} borderBottom="1px solid" borderColor="gray.200" bg="white" position="sticky" top={0} zIndex={1000}>
         <Container maxW="7xl">
           <Flex justify="space-between" align="center">
@@ -176,7 +165,7 @@ const Purchase = () => {
               onClick={() => navigate('/')}
               size="sm"
             >
-              Back to Home
+              {t('common.backToHome')}
             </Button>
           </Flex>
         </Container>
@@ -184,7 +173,6 @@ const Purchase = () => {
 
       <Container maxW="7xl" py={8}>
         <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={12}>
-          {/* Left Column - Course Info */}
           <VStack spacing={8} align="stretch">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -194,27 +182,26 @@ const Purchase = () => {
                 <Badge colorScheme="green" fontSize="sm" px={3} py={1} borderRadius="full">
                   <HStack spacing={1}>
                     <Icon as={FaHeart} w={3} h={3} />
-                    <Text>Most Popular Course</Text>
+                    <Text>{t('purchase.mostPopularCourse')}</Text>
                   </HStack>
                 </Badge>
                 
                 <Heading fontSize={{ base: "2xl", md: "3xl" }} color="gray.900">
-                  Classic Massage Mastery
+                  {t('purchase.courseTitle')}
                 </Heading>
                 
                 <Text fontSize="lg" color="gray.600" lineHeight="relaxed">
-                  Complete professional training from beginner to expert level. 
-                  Learn everything you need to perform amazing classic massage.
+                  {t('purchase.courseDescription')}
                 </Text>
 
                 <HStack spacing={6} py={4}>
                   <VStack>
                     <Text fontSize="2xl" fontWeight="800" color="blue.500">40+</Text>
-                    <Text fontSize="sm" color="gray.600">Video Lessons</Text>
+                    <Text fontSize="sm" color="gray.600">{t('landing.stats.videoLessons')}</Text>
                   </VStack>
                   <VStack>
                     <Text fontSize="2xl" fontWeight="800" color="blue.500">15k+</Text>
-                    <Text fontSize="sm" color="gray.600">Students</Text>
+                    <Text fontSize="sm" color="gray.600">{t('landing.stats.happyStudents')}</Text>
                   </VStack>
                   <VStack>
                     <Text fontSize="2xl" fontWeight="800" color="blue.500">4.9</Text>
@@ -230,7 +217,7 @@ const Purchase = () => {
               transition={{ delay: 0.2 }}
             >
               <VStack spacing={4} align="stretch">
-                <Heading size="md" color="gray.900">What You'll Get</Heading>
+                <Heading size="md" color="gray.900">{t('purchase.whatYouGet')}</Heading>
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                   {features.map((feature, index) => (
                     <Box key={index} p={4} borderRadius="lg" border="1px solid" borderColor="gray.200">
@@ -268,7 +255,7 @@ const Purchase = () => {
               transition={{ delay: 0.4 }}
             >
               <VStack spacing={4} align="stretch">
-                <Heading size="md" color="gray.900">Student Success Stories</Heading>
+                <Heading size="md" color="gray.900">{t('purchase.studentSuccessStories')}</Heading>
                 <VStack spacing={4}>
                   {testimonials.map((testimonial, index) => (
                     <Box key={index} p={4} bg="gray.50" borderRadius="lg">
@@ -292,7 +279,6 @@ const Purchase = () => {
             </motion.div>
           </VStack>
 
-          {/* Right Column - Purchase Form */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -313,10 +299,10 @@ const Purchase = () => {
                     <Badge colorScheme="red" fontSize="sm" px={3} py={1} borderRadius="full">
                       <HStack spacing={1}>
                         <Icon as={FaGift} w={3} h={3} />
-                        <Text>Limited Time - 60% OFF</Text>
+                        <Text>{t('purchase.limitedTimeOffer')}</Text>
                       </HStack>
                     </Badge>
-                    <Heading size="lg" color="gray.900">Choose Your Plan</Heading>
+                    <Heading size="lg" color="gray.900">{t('purchase.choosePlan')}</Heading>
                   </VStack>
 
                     <VStack spacing={3}>
@@ -346,7 +332,7 @@ const Purchase = () => {
                             py={1}
                             borderRadius="full"
                           >
-                            Most Popular
+                            {t('purchase.mostPopular')}
                           </Badge>
                         )}
                         
@@ -388,7 +374,7 @@ const Purchase = () => {
                             </HStack>
                           </VStack>
                           <Text fontSize="sm" color="green.600" fontWeight="600">
-                            Save ${plan.originalPrice - plan.price}
+                            {t('purchase.save', { amount: plan.originalPrice - plan.price })}
                           </Text>
                         </HStack>
                         
@@ -410,7 +396,7 @@ const Purchase = () => {
                     <VStack spacing={4}>
                       <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
                         <VStack align="start" spacing={2}>
-                          <Text fontSize="sm" fontWeight="medium">First Name *</Text>
+                          <Text fontSize="sm" fontWeight="medium">{t('purchase.firstName')} *</Text>
                           <Input
                             name="firstName"
                             value={formData.firstName}
@@ -421,7 +407,7 @@ const Purchase = () => {
                           />
                         </VStack>
                         <VStack align="start" spacing={2}>
-                          <Text fontSize="sm" fontWeight="medium">Last Name *</Text>
+                          <Text fontSize="sm" fontWeight="medium">{t('purchase.lastName')} *</Text>
                           <Input
                             name="lastName"
                             value={formData.lastName}
@@ -434,7 +420,7 @@ const Purchase = () => {
                       </Grid>
 
                       <VStack align="start" spacing={2} w="full">
-                        <Text fontSize="sm" fontWeight="medium">Email Address *</Text>
+                        <Text fontSize="sm" fontWeight="medium">{t('common.email')} *</Text>
                         <Input
                           name="email"
                           type="email"
@@ -447,7 +433,7 @@ const Purchase = () => {
                       </VStack>
 
                       <VStack align="start" spacing={3} w="full">
-                        <Text fontSize="sm" fontWeight="medium">Payment Method</Text>
+                        <Text fontSize="sm" fontWeight="medium">{t('purchase.paymentMethod')}</Text>
                         <VStack spacing={2}>
                           <HStack 
                             w="full" 
@@ -482,7 +468,7 @@ const Purchase = () => {
                               )}
                             </Box>
                             <Icon as={FaCreditCard} />
-                            <Text>Credit/Debit Card</Text>
+                            <Text>{t('purchase.creditCard')}</Text>
                           </HStack>
                           <HStack 
                             w="full" 
@@ -517,7 +503,7 @@ const Purchase = () => {
                               )}
                             </Box>
                             <Icon as={FaPaypal} color="blue.500" />
-                            <Text>PayPal</Text>
+                            <Text>{t('purchase.paypal')}</Text>
                           </HStack>
                         </VStack>
                       </VStack>
@@ -525,7 +511,7 @@ const Purchase = () => {
                       {paymentMethod === 'card' && (
                         <VStack spacing={3} w="full">
                           <VStack align="start" spacing={2} w="full">
-                            <Text fontSize="sm" fontWeight="medium">Card Number *</Text>
+                            <Text fontSize="sm" fontWeight="medium">{t('purchase.cardNumber')} *</Text>
                             <Input
                               name="cardNumber"
                               value={formData.cardNumber}
@@ -537,7 +523,7 @@ const Purchase = () => {
                           </VStack>
                           <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
                             <VStack align="start" spacing={2}>
-                              <Text fontSize="sm" fontWeight="medium">Expiry *</Text>
+                              <Text fontSize="sm" fontWeight="medium">{t('purchase.expiryDate')} *</Text>
                               <Input
                                 name="expiryDate"
                                 value={formData.expiryDate}
@@ -548,7 +534,7 @@ const Purchase = () => {
                               />
                             </VStack>
                             <VStack align="start" spacing={2}>
-                              <Text fontSize="sm" fontWeight="medium">CVV *</Text>
+                              <Text fontSize="sm" fontWeight="medium">{t('purchase.cvv')} *</Text>
                               <Input
                                 name="cvv"
                                 value={formData.cvv}
@@ -564,7 +550,7 @@ const Purchase = () => {
 
                       <Box w="full" p={4} bg="gray.50" borderRadius="lg">
                         <HStack justify="space-between" mb={2}>
-                          <Text>Course Price:</Text>
+                          <Text>{t('purchase.coursePrice')}:</Text>
                           <HStack>
                             <Text textDecoration="line-through" color="gray.500">
                               ${plans.find(p => p.id === selectedPlan)?.originalPrice}
@@ -575,7 +561,7 @@ const Purchase = () => {
                           </HStack>
                         </HStack>
                         <HStack justify="space-between" fontSize="lg" fontWeight="700">
-                          <Text>Total:</Text>
+                          <Text>{t('purchase.total')}:</Text>
                           <Text color="green.600">
                             ${plans.find(p => p.id === selectedPlan)?.price}
                           </Text>
@@ -593,19 +579,19 @@ const Purchase = () => {
                         fontWeight="600"
                         borderRadius="xl"
                         isLoading={isLoading}
-                        loadingText="Processing..."
+                        loadingText={t('purchase.processing')}
                         leftIcon={<Icon as={FaShieldAlt} />}
                         _hover={{
                           transform: 'translateY(-2px)',
                           boxShadow: 'xl'
                         }}
                       >
-                        Complete Purchase
+                        {t('purchase.completePurchase')}
                       </Button>
 
                       <HStack spacing={2} justify="center" fontSize="xs" color="gray.500">
                         <Icon as={FaLock} />
-                        <Text>Secure payment • SSL encrypted • 30-day money-back guarantee</Text>
+                        <Text>{t('purchase.securePayment')}</Text>
                       </HStack>
                     </VStack>
                   </form>

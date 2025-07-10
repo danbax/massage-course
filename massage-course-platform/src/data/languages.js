@@ -70,12 +70,19 @@ export const languageConfig = {
     nativeName: 'العربية',
     flag: '🇸🇦',
     flagIcon: 'SA'
+  },
+  uk: {
+    code: 'uk',
+    name: 'Ukrainian',
+    nativeName: 'Українська',
+    flag: '🇺🇦',
+    flagIcon: 'UA'
   }
 }
 
 // Get list of currently available languages (those with translations)
 export const getAvailableLanguages = () => {
-  const availableLanguageCodes = ['en', 'ru'] // Update this when adding new translations
+  const availableLanguageCodes = ['en', 'ru', 'de', 'uk'] // Updated to include all supported languages
   return availableLanguageCodes.map(code => languageConfig[code]).filter(Boolean)
 }
 

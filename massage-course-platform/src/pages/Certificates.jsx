@@ -30,27 +30,27 @@ const Certificates = () => {
   const certificates = [
     {
       id: 1,
-      title: 'Swedish Massage Specialist',
-      description: 'Completed basic Swedish massage techniques',
-      requirement: 'Complete first 2 lessons',
+      title: t('certificates.types.swedishMassage'),
+      description: t('certificates.types.swedishDesc'),
+      requirement: t('certificates.requirements.complete2Lessons'),
       unlocked: completedLessons >= 2,
       icon: FaAward,
       color: 'blue'
     },
     {
       id: 2,
-      title: 'Deep Tissue Expert',
-      description: 'Mastered advanced deep tissue techniques',
-      requirement: 'Complete first 4 lessons',
+      title: t('certificates.types.deepTissue'),
+      description: t('certificates.types.deepTissueDesc'),
+      requirement: t('certificates.requirements.complete4Lessons'),
       unlocked: completedLessons >= 4,
       icon: FaTrophy,
       color: 'purple'
     },
     {
       id: 3,
-      title: 'Master Therapist',
-      description: 'Completed the entire professional course',
-      requirement: 'Complete all lessons',
+      title: t('certificates.types.masterTherapist'),
+      description: t('certificates.types.masterDesc'),
+      requirement: t('certificates.requirements.completeAllLessons'),
       unlocked: progress === 100,
       icon: FaStar,
       color: 'yellow'
@@ -67,10 +67,10 @@ const Certificates = () => {
           <Center textAlign="center">
             <VStack spacing={4}>
               <Heading size="2xl" color="gray.900">
-                Your Certificates
+                {t('certificates.title')}
               </Heading>
               <Text fontSize="xl" color="gray.600" maxW="2xl">
-                Showcase your achievements and professional credentials
+                {t('certificates.showcaseAchievements')}
               </Text>
             </VStack>
           </Center>
@@ -125,7 +125,7 @@ const Certificates = () => {
                     </Text>
                     
                     <Text fontSize="xs" color="gray.500" fontWeight="medium">
-                      <strong>Requirement:</strong> {certificate.requirement}
+                      <strong>{t('common.required')}:</strong> {certificate.requirement}
                     </Text>
                   </VStack>
                   
@@ -136,7 +136,7 @@ const Certificates = () => {
                       size="sm"
                       w="full"
                     >
-                      Download Certificate
+                      {t('certificates.downloadCertificate')}
                     </Button>
                   ) : (
                     <Button 
@@ -146,7 +146,7 @@ const Certificates = () => {
                       w="full"
                       isDisabled
                     >
-                      Locked
+                      {t('certificates.locked')}
                     </Button>
                   )}
                 </VStack>
@@ -155,47 +155,53 @@ const Certificates = () => {
           ))}
         </Grid>
 
-        <Box
-          bg="white"
-          borderRadius="2xl"
-          boxShadow="lg"
-          border="1px solid"
-          borderColor="gray.100"
-          p={8}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
         >
-          <Heading size="lg" color="gray.900" mb={6} textAlign="center">
-            Achievement Progress
-          </Heading>
-          
-          <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={8}>
-            <Center textAlign="center">
-              <VStack spacing={2}>
-                <Text fontSize="4xl" fontWeight="bold" color="blue.600">
-                  {certificates.filter(c => c.unlocked).length}
-                </Text>
-                <Text color="gray.600">Certificates Earned</Text>
-              </VStack>
-            </Center>
+          <Box
+            bg="white"
+            borderRadius="2xl"
+            boxShadow="lg"
+            border="1px solid"
+            borderColor="gray.100"
+            p={8}
+          >
+            <Heading size="lg" color="gray.900" mb={6} textAlign="center">
+              {t('certificates.achievements.title')}
+            </Heading>
             
-            <Center textAlign="center">
-              <VStack spacing={2}>
-                <Text fontSize="4xl" fontWeight="bold" color="purple.600">
-                  {completedLessons}
-                </Text>
-                <Text color="gray.600">Lessons Completed</Text>
-              </VStack>
-            </Center>
-            
-            <Center textAlign="center">
-              <VStack spacing={2}>
-                <Text fontSize="4xl" fontWeight="bold" color="green.600">
-                  {progress}%
-                </Text>
-                <Text color="gray.600">Course Progress</Text>
-              </VStack>
-            </Center>
-          </Grid>
-        </Box>
+            <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={8}>
+              <Center textAlign="center">
+                <VStack spacing={2}>
+                  <Text fontSize="4xl" fontWeight="bold" color="blue.600">
+                    {certificates.filter(c => c.unlocked).length}
+                  </Text>
+                  <Text color="gray.600">{t('certificates.achievements.certificatesEarned')}</Text>
+                </VStack>
+              </Center>
+              
+              <Center textAlign="center">
+                <VStack spacing={2}>
+                  <Text fontSize="4xl" fontWeight="bold" color="purple.600">
+                    {completedLessons}
+                  </Text>
+                  <Text color="gray.600">{t('certificates.achievements.lessonsCompleted')}</Text>
+                </VStack>
+              </Center>
+              
+              <Center textAlign="center">
+                <VStack spacing={2}>
+                  <Text fontSize="4xl" fontWeight="bold" color="green.600">
+                    {progress}%
+                  </Text>
+                  <Text color="gray.600">{t('certificates.achievements.courseProgress')}</Text>
+                </VStack>
+              </Center>
+            </Grid>
+          </Box>
+        </motion.div>
       </VStack>
     </Container>
   )

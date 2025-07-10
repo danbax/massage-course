@@ -55,29 +55,29 @@ const LandingPage = () => {
   const features = [
     {
       icon: FaPlay,
-      title: 'Video Lessons',
-      description: 'Professional quality video content with expert instruction and detailed demonstrations',
+      title: t('landing.features.videoLessons.title'),
+      description: t('landing.features.videoLessons.description'),
       color: 'primary',
       gradient: 'linear-gradient(135deg, #0ea5e9, #38bdf8)'
     },
     {
       icon: FaGraduationCap,
-      title: 'Professional Certification',
-      description: 'Get internationally recognized certification upon successful completion',
+      title: t('landing.features.certification.title'),
+      description: t('landing.features.certification.description'),
       color: 'secondary',
       gradient: 'linear-gradient(135deg, #a855f7, #c084fc)'
     },
     {
       icon: FaClock,
-      title: 'Lifetime Access',
-      description: 'Learn at your own pace with unlimited access to all content forever',
+      title: t('landing.features.lifetimeAccess.title'),
+      description: t('landing.features.lifetimeAccess.description'),
       color: 'accent',
       gradient: 'linear-gradient(135deg, #22c55e, #4ade80)'
     },
     {
       icon: FaUsers,
-      title: 'Course Resources',
-      description: 'Access downloadable materials, guides, and practice tools',
+      title: t('landing.features.resources.title'),
+      description: t('landing.features.resources.description'),
       color: 'warning',
       gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)'
     }
@@ -140,7 +140,6 @@ const LandingPage = () => {
     }
   ]
 
-  // Carousel navigation
   const itemsPerSlide = 3
   const totalSlides = Math.ceil(testimonials.length / itemsPerSlide)
   
@@ -158,17 +157,17 @@ const LandingPage = () => {
   }
 
   const stats = [
-    { number: "40+", label: "Video Lessons", icon: FaPlay },
-    { number: "15,000+", label: "Happy Students", icon: FaUsers },
-    { number: "98%", label: "Success Rate", icon: FaMedal },
-    { number: "24/7", label: "Course Access", icon: FaShieldAlt }
+    { number: "40+", label: t('landing.stats.videoLessons'), icon: FaPlay },
+    { number: "15,000+", label: t('landing.stats.happyStudents'), icon: FaUsers },
+    { number: "98%", label: t('landing.stats.successRate'), icon: FaMedal },
+    { number: "24/7", label: t('landing.stats.courseAccess'), icon: FaShieldAlt }
   ]
 
   const pricingFeatures = [
-    'Video Lessons',
-    'Professional Certification',
-    'Lifetime Access',
-    'Course Resources'
+    t('landing.features.videoLessons.title'),
+    t('landing.features.certification.title'),
+    t('landing.features.lifetimeAccess.title'),
+    t('landing.features.resources.title')
   ]
 
   return (
@@ -196,7 +195,7 @@ const LandingPage = () => {
                 >
                   <Image 
                     src={iconImage} 
-                    alt="Massage Academy Logo" 
+                    alt={t('landing.brand.name')} 
                     w={12}
                     h={12}
                     borderRadius="2xl"
@@ -215,10 +214,10 @@ const LandingPage = () => {
                 </Box>
                 <Box>
                   <Text fontSize="xl" fontWeight="800" color="gray.900" className="gradient-text">
-                    Massage Academy
+                    {t('landing.brand.name')}
                   </Text>
                   <Text fontSize="xs" color="gray.500" fontWeight="500">
-                    Professional Training
+                    {t('landing.brand.tagline')}
                   </Text>
                 </Box>
               </HStack>
@@ -243,7 +242,7 @@ const LandingPage = () => {
                   }}
                   transition="all 0.2s"
                 >
-                  Sign In
+                  {t('common.signIn')}
                 </Button>
               </HStack>
             </motion.div>
@@ -279,7 +278,6 @@ const LandingPage = () => {
           className="floating-animation"
           style={{ animationDelay: '1s' }}
         />
-
         <Container maxW="7xl" py={{ base: 8, md: 12 }}>
           <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={{ base: 6, lg: 8 }} alignItems="center">
             <motion.div
@@ -299,7 +297,7 @@ const LandingPage = () => {
                     bg="gradient-primary"
                     color="white"
                   >
-                    🏆 #1 Online Massage Course
+                    🏆 {t('landing.badges.topCourse')}
                   </Badge>
                   <Heading
                     fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }}
@@ -309,13 +307,12 @@ const LandingPage = () => {
                     letterSpacing="-0.03em"
                     className="text-balance"
                   >
-                    <Box as="span" display="block">From Zero to Hero</Box>
+                    <Box as="span" display="block">{t('landing.hero.title')}</Box>
                     <Box as="span" display="block" className="gradient-text">
-                      Classic Massage Mastery
+                      {t('landing.hero.courseName')}
                     </Box>
                   </Heading>
                 </Box>
-
                 <Text 
                   fontSize={{ base: "md", md: "lg" }} 
                   color="gray.600" 
@@ -323,8 +320,7 @@ const LandingPage = () => {
                   maxW="95%"
                   className="text-balance"
                 >
-                  Learn everything you need to perform amazing classic massage. 
-                  Complete course from beginner to professional level.
+                  {t('landing.hero.subtitle')}
                 </Text>
                 
                 <HStack spacing={3} flexWrap="wrap">
@@ -350,7 +346,7 @@ const LandingPage = () => {
                     transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
                     className="pulse-glow"
                   >
-                    Purchase Course
+                    {t('landing.hero.enrollNow')}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -371,35 +367,33 @@ const LandingPage = () => {
                     transition="all 0.2s"
                     rightIcon={<FaArrowRight />}
                   >
-                    Learn More
+                    {t('landing.hero.learnMore')}
                   </Button>
                 </HStack>
-
                 <Box pt={4}>
                   <HStack spacing={4} flexWrap="wrap">
                     <HStack spacing={2}>
                       <Icon as={FaShieldAlt} color="green.500" w={3} h={3} />
                       <Text fontSize="xs" color="gray.600" fontWeight="500">
-                        Certified & Accredited
+                        {t('landing.hero.certifiedAccredited')}
                       </Text>
                     </HStack>
                     <HStack spacing={2}>
                       <Icon as={FaGlobe} color="blue.500" w={3} h={3} />
                       <Text fontSize="xs" color="gray.600" fontWeight="500">
-                        Online Course
+                        {t('landing.hero.onlineCourse')}
                       </Text>
                     </HStack>
                     <HStack spacing={2}>
                       <Icon as={FaHeart} color="red.500" w={3} h={3} />
                       <Text fontSize="xs" color="gray.600" fontWeight="500">
-                        98% Satisfaction
+                        {t('landing.hero.satisfaction')}
                       </Text>
                     </HStack>
                   </HStack>
                 </Box>
               </VStack>
             </motion.div>
-
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
@@ -416,7 +410,7 @@ const LandingPage = () => {
                 >
                   <Image
                     src={massageLaptop}
-                    alt="Professional Massage Training"
+                    alt={t('landing.hero.subtitle')}
                     borderRadius="xl"
                     w="full"
                     h={{ base: "250px", md: "300px" }}
@@ -457,10 +451,9 @@ const LandingPage = () => {
                       color="primary.500"
                       boxShadow="xl"
                       _hover={{ bg: 'primary.50', color: 'primary.600' }}
-                      aria-label="Play demo video"
+                      aria-label={t('landing.hero.playDemo')}
                     />
                   </motion.div>
-
                   <Box
                     position="absolute"
                     top={2}
@@ -480,7 +473,6 @@ const LandingPage = () => {
                     </HStack>
                   </Box>
                 </Box>
-
                 <SimpleGrid columns={2} spacing={3} mt={4}>
                   {stats.slice(0, 2).map((stat, index) => (
                     <motion.div
@@ -532,7 +524,7 @@ const LandingPage = () => {
                   bg="primary.100"
                   color="primary.700"
                 >
-                  Why Choose Us
+                  {t('landing.features.title')}
                 </Badge>
                 <Heading 
                   fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }} 
@@ -540,7 +532,7 @@ const LandingPage = () => {
                   fontWeight="800"
                   className="text-balance"
                 >
-                  World-Class Features
+                  {t('landing.features.worldClassTitle')}
                 </Heading>
                 <Text 
                   fontSize="xl" 
@@ -548,11 +540,10 @@ const LandingPage = () => {
                   maxW="2xl" 
                   className="text-balance"
                 >
-                  Everything you need to become a certified massage therapist with confidence
+                  {t('landing.features.subtitle')}
                 </Text>
               </VStack>
             </motion.div>
-
             <Grid 
               templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }} 
               gap={8}
@@ -593,7 +584,6 @@ const LandingPage = () => {
                       bg={feature.gradient}
                       borderTopRadius="3xl"
                     />
-
                     <Box
                       w={20}
                       h={20}
@@ -643,7 +633,7 @@ const LandingPage = () => {
                   bg="secondary.100"
                   color="secondary.700"
                 >
-                  Success Stories
+                  {t('landing.badges.successStories')}
                 </Badge>
                 <Heading 
                   fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }} 
@@ -651,7 +641,7 @@ const LandingPage = () => {
                   fontWeight="800"
                   className="text-balance"
                 >
-                  What Our Students Say
+                  {t('landing.testimonials.title')}
                 </Heading>
                 <Text 
                   fontSize="xl" 
@@ -659,16 +649,14 @@ const LandingPage = () => {
                   maxW="2xl" 
                   className="text-balance"
                 >
-                  Real stories from students who transformed their massage practice
+                  {t('landing.testimonials.subtitle')}
                 </Text>
               </VStack>
             </motion.div>
-
             <Box position="relative" w="full">
-              {/* Navigation Arrows */}
               <Flex justify="space-between" align="center" mb={6}>
                 <IconButton
-                  aria-label="Previous testimonials"
+                  aria-label={t('landing.testimonials.navigation.previous')}
                   onClick={prevSlide}
                   variant="ghost"
                   size="lg"
@@ -682,11 +670,10 @@ const LandingPage = () => {
                 </IconButton>
                 
                 <Text fontSize="sm" color="gray.500" fontWeight="500">
-                  {currentSlide + 1} of {totalSlides}
+                  {t('landing.testimonials.navigation.pageInfo', { current: currentSlide + 1, total: totalSlides })}
                 </Text>
-
                 <IconButton
-                  aria-label="Next testimonials"
+                  aria-label={t('landing.testimonials.navigation.next')}
                   onClick={nextSlide}
                   variant="ghost"
                   size="lg"
@@ -699,8 +686,6 @@ const LandingPage = () => {
                   <FaChevronRight />
                 </IconButton>
               </Flex>
-
-              {/* Testimonials Grid */}
               <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6} w="full">
                 {getCurrentTestimonials().map((testimonial, index) => (
                   <motion.div
@@ -772,8 +757,6 @@ const LandingPage = () => {
                   </motion.div>
                 ))}
               </Grid>
-
-              {/* Dots Indicator */}
               <Flex justify="center" mt={6} gap={2}>
                 {[...Array(totalSlides)].map((_, index) => (
                   <Box
@@ -851,13 +834,13 @@ const LandingPage = () => {
                   py={1} 
                   borderRadius="full"
                 >
-                  Limited Time Offer
+                  {t('landing.badges.limitedOffer')}
                 </Badge>
                 <Heading fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }} fontWeight="800">
-                  Start Your Journey Today
+                  {t('landing.pricing.title')}
                 </Heading>
                 <Text fontSize="xl" opacity={0.9} maxW="2xl" className="text-balance">
-                  Join thousands of professionals who have transformed their careers with our certification program
+                  {t('landing.pricing.subtitle')}
                 </Text>
               </VStack>
               
@@ -873,10 +856,10 @@ const LandingPage = () => {
                 <VStack spacing={6}>
                   <Box textAlign="center">
                     <Text fontSize="7xl" fontWeight="800" className="gradient-text" lineHeight={1}>
-                      $20
+                      {t('landing.pricing.price')}
                     </Text>
                     <Text fontSize="xl" color="gray.600" fontWeight="500">
-                      One-time payment • Lifetime access
+                      {t('landing.pricing.priceDescription')}
                     </Text>
                   </Box>
                   
@@ -912,11 +895,10 @@ const LandingPage = () => {
                     transition="all 0.2s"
                     onClick={() => navigate('/purchase')}
                   >
-                    Enroll Now & Start Learning
+                    {t('landing.pricing.enrollButton')}
                   </Button>
-
                   <Text fontSize="sm" color="gray.500" textAlign="center">
-                    ⚡ Instant access • 🏆 Lifetime support
+                    {t('landing.pricing.instantAccessIcon')} • {t('landing.pricing.supportIcon')}
                   </Text>
                 </VStack>
               </Box>
@@ -936,38 +918,38 @@ const LandingPage = () => {
               <HStack justify="center" spacing={3} mb={4}>
                 <Image 
                   src={iconImage} 
-                  alt="Massage Academy Logo" 
+                  alt={t('landing.brand.name')} 
                   w={12}
                   h={12}
                   borderRadius="2xl"
                 />
                 <Box textAlign="left">
-                  <Text fontSize="xl" fontWeight="800">Massage Academy</Text>
-                  <Text fontSize="sm" color="gray.400">Professional Training Excellence</Text>
+                  <Text fontSize="xl" fontWeight="800">{t('landing.brand.name')}</Text>
+                  <Text fontSize="sm" color="gray.400">{t('landing.footer.tagline')}</Text>
                 </Box>
               </HStack>
             </motion.div>
             
             <HStack spacing={4} flexWrap="wrap" justify="center">
               <Text color="gray.400" fontSize="sm">
-                © 2024 Massage Academy. All rights reserved.
+                {t('landing.footer.copyright')}
               </Text>
               <HStack spacing={4} fontSize="sm">
                 <Link to="/terms-of-service">
                   <Text color="gray.400" _hover={{ color: "white" }} transition="color 0.2s">
-                    Terms of Service
+                    {t('landing.footer.termsOfService')}
                   </Text>
                 </Link>
                 <Text color="gray.600">•</Text>
                 <Link to="/privacy-policy">
                   <Text color="gray.400" _hover={{ color: "white" }} transition="color 0.2s">
-                    Privacy Policy
+                    {t('landing.footer.privacyPolicy')}
                   </Text>
                 </Link>
                 <Text color="gray.600">•</Text>
                 <Link to="/contact-support">
                   <Text color="gray.400" _hover={{ color: "white" }} transition="color 0.2s">
-                    Contact Support
+                    {t('landing.footer.contactSupport')}
                   </Text>
                 </Link>
               </HStack>

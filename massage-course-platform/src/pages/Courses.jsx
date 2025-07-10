@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useModules, useProgressOverview } from '../hooks/useApi'
+import { useLanguage } from '../hooks/useLanguage'
 import {
   Box,
   Container,
@@ -31,9 +32,9 @@ import {
 
 const Courses = () => {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [expandedModules, setExpandedModules] = useState({ 0: true })
   
-  // Fetch modules and progress data from API
   const { data: modules, isLoading: modulesLoading, error: modulesError } = useModules()
   const { data: progressData, isLoading: progressLoading, error: progressError } = useProgressOverview()
   
@@ -55,7 +56,7 @@ const Courses = () => {
       <Container maxW="7xl" py={8}>
         <Alert.Root status="error">
           <Alert.Icon />
-          <Alert.Title>Failed to load course content. Please try again.</Alert.Title>
+          <Alert.Title>{t('courses.loadingError')}</Alert.Title>
         </Alert.Root>
       </Container>
     )
@@ -75,7 +76,6 @@ const Courses = () => {
     ), 0
   )
   
-  // Calculate progress percentage
   const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
   
   const toggleModule = (moduleIndex) => {
@@ -88,14 +88,12 @@ const Courses = () => {
   const handleLessonClick = (lesson) => {
     if (!Array.isArray(modules)) return
     
-    // Check if lesson is available (current or previous lessons completed)
     const moduleIndex = modules.findIndex(m => m.lessons && m.lessons.some(l => l.id === lesson.id))
     if (moduleIndex === -1) return
     
     const lessonIndex = modules[moduleIndex].lessons.findIndex(l => l.id === lesson.id)
     if (lessonIndex === -1) return
     
-    // Allow access if it's the first lesson or if previous lessons are completed
     const canAccess = lessonIndex === 0 || modules[moduleIndex].lessons
       .slice(0, lessonIndex)
       .every(prevLesson => prevLesson.progress?.is_completed)
@@ -108,7 +106,6 @@ const Courses = () => {
   const getLessonStatus = (lesson, moduleIndex, lessonIndex) => {
     if (lesson.progress?.is_completed) return 'completed'
     
-    // Check if lesson is accessible
     if (!Array.isArray(modules) || !modules[moduleIndex]) return 'locked'
     
     const module = modules[moduleIndex]
@@ -137,24 +134,24 @@ const Courses = () => {
               <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={8} alignItems="center">
                 <VStack align="start" spacing={4}>
                   <Heading size="xl">
-                    Professional Relaxation Massage Therapy Course
+                    {t('courses.title')}
                   </Heading>
                   <Text fontSize="lg" color="blue.100">
-                    From Zero to Hero - Complete Professional Training
+                    {t('courses.subtitle')}
                   </Text>
                   
                   <HStack spacing={6} pt={2}>
                     <VStack align="start" spacing={1}>
                       <Text fontSize="2xl" fontWeight="bold">{totalLessons}</Text>
-                      <Text fontSize="sm" color="blue.200">Total Lessons</Text>
+                      <Text fontSize="sm" color="blue.200">{t('courses.totalLessons')}</Text>
                     </VStack>
                     <VStack align="start" spacing={1}>
                       <Text fontSize="2xl" fontWeight="bold">{completedLessons}</Text>
-                      <Text fontSize="sm" color="blue.200">Completed</Text>
+                      <Text fontSize="sm" color="blue.200">{t('courses.completed')}</Text>
                     </VStack>
                     <VStack align="start" spacing={1}>
                       <Text fontSize="2xl" fontWeight="bold">{Math.floor(totalDuration / 60)}h {totalDuration % 60}m</Text>
-                      <Text fontSize="sm" color="blue.200">Total Time</Text>
+                      <Text fontSize="sm" color="blue.200">{t('courses.totalTime')}</Text>
                     </VStack>
                   </HStack>
                 </VStack>
@@ -162,7 +159,7 @@ const Courses = () => {
                 <VStack spacing={4}>
                   <Box w="full" textAlign="center">
                     <Text fontSize="4xl" fontWeight="bold">{Math.round(progressData?.completion_percentage || 0)}%</Text>
-                    <Text color="blue.200">Course Complete</Text>
+                    <Text color="blue.200">{t('courses.courseComplete')}</Text>
                   </Box>
                   <Box w="full" bg="blue.600" borderRadius="full" h="3">
                     <Box 
@@ -182,7 +179,7 @@ const Courses = () => {
         <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
           <VStack spacing={6} align="stretch">
             <Heading size="lg" color="gray.900">
-              Course Modules
+              {t('courses.courseModules')}
             </Heading>
             
             <VStack spacing={4}>
@@ -208,7 +205,7 @@ const Courses = () => {
                         <HStack justify="space-between">
                           <VStack align="start" spacing={1}>
                             <Text fontSize="sm" color="blue.600" fontWeight="medium">
-                              Module {module.id}
+                              {t('course.module')} {module.id}
                             </Text>
                             <Heading size="md" color="gray.900">
                               {module.name}
@@ -216,11 +213,11 @@ const Courses = () => {
                             <HStack spacing={4} fontSize="sm" color="gray.500">
                               <HStack spacing={1}>
                                 <Icon as={FaBookOpen} w={3} h={3} />
-                                <Text>{lessons.length} lessons</Text>
+                                <Text>{lessons.length} {t('course.lessons')}</Text>
                               </HStack>
                               <HStack spacing={1}>
                                 <Icon as={FaClock} w={3} h={3} />
-                                <Text>{lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)} min</Text>
+                                <Text>{lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)} {t('courses.lesson.minutes')}</Text>
                               </HStack>
                             </HStack>
                           </VStack>
@@ -229,7 +226,7 @@ const Courses = () => {
                               colorScheme={moduleProgress === 100 ? 'green' : moduleProgress > 0 ? 'blue' : 'gray'}
                               fontSize="xs"
                             >
-                              {moduleCompleted}/{lessons.length} completed
+                              {moduleCompleted}/{lessons.length} {t('courses.completed')}
                             </Badge>
                             <Box w="20" bg="gray.200" borderRadius="full" h="1">
                               <Box
@@ -314,17 +311,17 @@ const Courses = () => {
                                       <HStack spacing={3} fontSize="xs" color="gray.500">
                                         <HStack spacing={1}>
                                           <Icon as={FaClock} w={2} h={2} />
-                                          <Text>{lesson.duration} min</Text>
+                                          <Text>{lesson.duration} {t('courses.lesson.minutes')}</Text>
                                         </HStack>
                                         <HStack spacing={1}>
                                           <Icon as={FaVideo} w={2} h={2} />
-                                          <Text>HD Video</Text>
+                                          <Text>{t('courses.lesson.hdVideo')}</Text>
                                         </HStack>
                                       </HStack>
                                       {lesson.progress?.watch_percentage > 0 && !lesson.progress?.is_completed && (
                                         <Box w="full" mt={1}>
                                           <HStack justify="space-between" align="center" mb={1}>
-                                            <Text fontSize="2xs" color="gray.400">Progress</Text>
+                                            <Text fontSize="2xs" color="gray.400">{t('courses.lesson.progress')}</Text>
                                             <Text fontSize="2xs" color="blue.600" fontWeight="medium">
                                               {Math.round(lesson.progress.watch_percentage)}%
                                             </Text>
@@ -347,7 +344,7 @@ const Courses = () => {
                                       colorScheme={status === 'completed' ? 'green' : 'blue'}
                                       variant={status === 'completed' ? 'outline' : 'solid'}
                                     >
-                                      {status === 'completed' ? 'Rewatch' : 'Start'}
+                                      {status === 'completed' ? t('courses.lesson.rewatch') : t('courses.lesson.start')}
                                     </Button>
                                   </HStack>
                                 </Box>
@@ -374,7 +371,7 @@ const Courses = () => {
             >
               <Box p={6}>
                 <Heading size="md" color="gray.900" mb={4}>
-                  Quick Actions
+                  {t('courses.quickActions.title')}
                 </Heading>
                 <VStack spacing={3} align="stretch">
                   <Button
@@ -390,7 +387,7 @@ const Courses = () => {
                       }
                     }}
                   >
-                    Continue Learning
+                    {t('courses.quickActions.continueLearning')}
                   </Button>
                   <Button
                     leftIcon={<FaGraduationCap />}
@@ -400,7 +397,7 @@ const Courses = () => {
                     justifyContent="flex-start"
                     onClick={() => navigate('/app/certificates')}
                   >
-                    View Certificates
+                    {t('courses.quickActions.viewCertificates')}
                   </Button>
                   <Button
                     leftIcon={<FaCheck />}
@@ -410,7 +407,7 @@ const Courses = () => {
                     justifyContent="flex-start"
                     onClick={() => navigate('/app/progress')}
                   >
-                    Track Progress
+                    {t('courses.quickActions.trackProgress')}
                   </Button>
                 </VStack>
               </Box>
@@ -425,12 +422,12 @@ const Courses = () => {
             >
               <Box p={6}>
                 <Heading size="md" color="gray.900" mb={4}>
-                  Course Progress
+                  {t('courses.courseProgress.title')}
                 </Heading>
                 <VStack spacing={4}>
                   <Box w="full">
                     <HStack justify="space-between" mb={2}>
-                      <Text fontSize="sm" color="gray.600">Overall Progress</Text>
+                      <Text fontSize="sm" color="gray.600">{t('courses.courseProgress.overallProgress')}</Text>
                       <Text fontSize="sm" fontWeight="medium">{progressPercentage}%</Text>
                     </HStack>
                     <Box bg="gray.200" borderRadius="full" h="3">
@@ -449,26 +446,26 @@ const Courses = () => {
                       <Text fontSize="2xl" fontWeight="bold" color="blue.600">
                         {completedLessons}
                       </Text>
-                      <Text fontSize="sm" color="blue.600">Completed</Text>
+                      <Text fontSize="sm" color="blue.600">{t('courses.courseProgress.completed')}</Text>
                     </Box>
                     <Box textAlign="center" p={3} bg="orange.50" borderRadius="lg">
                       <Text fontSize="2xl" fontWeight="bold" color="orange.600">
                         {totalLessons - completedLessons}
                       </Text>
-                      <Text fontSize="sm" color="orange.600">Remaining</Text>
+                      <Text fontSize="sm" color="orange.600">{t('courses.courseProgress.remaining')}</Text>
                     </Box>
                   </Grid>
 
                   <Box w="full" h="1px" bg="gray.200" />
 
                   <VStack spacing={2} w="full">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700">Module Progress</Text>
+                    <Text fontSize="sm" fontWeight="medium" color="gray.700">{t('courses.courseProgress.moduleProgress')}</Text>
                     {(Array.isArray(modules) ? modules : []).map(module => {
                       const moduleProgress = (module.lessons || []).filter(l => l.progress?.is_completed).length / (module.lessons || []).length * 100
                       return (
                         <Box key={module.id} w="full">
                           <HStack justify="space-between" mb={1}>
-                            <Text fontSize="xs" color="gray.600">Module {module.id}</Text>
+                            <Text fontSize="xs" color="gray.600">{t('course.module')} {module.id}</Text>
                             <Text fontSize="xs" color="gray.600">{Math.round(moduleProgress)}%</Text>
                           </HStack>
                           <Box bg="gray.200" borderRadius="full" h="1">

@@ -59,7 +59,7 @@ class SettingsController extends Controller
             'privacy.profile_visibility' => 'sometimes|in:public,private',
             'privacy.show_progress' => 'sometimes|boolean',
             'privacy.show_certificates' => 'sometimes|boolean',
-            'preferences.language' => 'sometimes|in:en,es,fr,de',
+            'preferences.language' => 'sometimes|in:en,ru,de,uk',
             'preferences.timezone' => 'sometimes|string',
             'preferences.video_quality' => 'sometimes|in:auto,720p,1080p',
             'preferences.auto_play_next' => 'sometimes|boolean'

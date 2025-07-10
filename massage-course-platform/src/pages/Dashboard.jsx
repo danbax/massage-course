@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useLanguage } from '../hooks/useLanguage'
 import { useCurrentUser, useProgressOverview, useProgressAnalytics } from '../hooks/useApi'
 import {
   Box,
@@ -33,8 +33,8 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { t } = useLanguage()
   
-  // Fetch user data and progress
   const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser()
   const { data: progressData, isLoading: progressLoading, error: progressError } = useProgressOverview()
   const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useProgressAnalytics()
@@ -65,54 +65,54 @@ const Dashboard = () => {
 
   const stats = [
     {
-      name: 'Lessons Completed',
+      name: t('dashboard.stats.lessonsCompleted'),
       value: progressData?.completed_lessons || 0,
       icon: FaPlayCircle,
       color: 'blue',
-      change: analytics?.weekly_lessons_completed ? `+${analytics.weekly_lessons_completed} this week` : 'No progress this week'
+      change: analytics?.weekly_lessons_completed ? t('dashboard.stats.weeklyProgress', { count: analytics.weekly_lessons_completed }) : t('dashboard.stats.noProgressWeek')
     },
     {
-      name: 'Study Time',
+      name: t('dashboard.stats.studyTime'),
       value: `${Math.round((analytics?.total_time_spent || 0) / 60)}h`,
       icon: FaClock,
       color: 'purple',
-      change: analytics?.weekly_time_spent ? `+${Math.round(analytics.weekly_time_spent / 60)}h this week` : 'No study time this week'
+      change: analytics?.weekly_time_spent ? t('dashboard.stats.weeklyProgress', { count: `${Math.round(analytics.weekly_time_spent / 60)}h` }) : t('dashboard.stats.noProgressWeek')
     },
     {
-      name: 'Progress',
+      name: t('dashboard.stats.progress'),
       value: `${Math.round(progressData?.completion_percentage || 0)}%`,
       icon: FaChartLine,
       color: 'green',
-      change: analytics?.weekly_progress_increase ? `+${analytics.weekly_progress_increase}% this week` : 'No progress this week'
+      change: analytics?.weekly_progress_increase ? t('dashboard.stats.weeklyProgress', { count: `${analytics.weekly_progress_increase}%` }) : t('dashboard.stats.noProgressWeek')
     },
     {
-      name: 'Certificates',
+      name: t('dashboard.stats.certificates'),
       value: userData?.certificates_count || 0,
       icon: FaTrophy,
       color: 'orange',
-      change: progressData?.is_completed ? 'Certificate available' : 'Complete course to earn'
+      change: progressData?.is_completed ? t('dashboard.stats.certificateAvailable') : t('dashboard.stats.completeForCertificate')
     }
   ]
 
   const recentActivity = [
     {
       id: 1,
-      title: 'Started your massage learning journey',
-      time: 'Today',
+      title: t('dashboard.recentActivity.startedJourney'),
+      time: t('dashboard.recentActivity.today'),
       icon: FaPlayCircle,
       color: 'blue'
     },
     {
       id: 2,
-      title: 'Enrolled in Professional Massage Course',
-      time: 'Today',
+      title: t('dashboard.recentActivity.enrolledInCourse'),
+      time: t('dashboard.recentActivity.today'),
       icon: FaBookOpen,
       color: 'green'
     }
   ]
 
   const handleContinueLearning = () => {
-    if (modules.length > 0) {
+    if (modules && modules.length > 0) {
       const firstModule = modules[0]
       if (firstModule.lessons && firstModule.lessons.length > 0) {
         const nextLesson = firstModule.lessons.find(lesson => !lesson.progress?.is_completed) || firstModule.lessons[0]
@@ -124,6 +124,8 @@ const Dashboard = () => {
       navigate('/app/courses')
     }
   }
+
+  const completionPercentage = Math.round(progressData?.completion_percentage || 0)
 
   return (
     <Container maxW="7xl">
@@ -137,10 +139,10 @@ const Dashboard = () => {
               <Flex justify="space-between" align="center">
                 <VStack align="start" spacing={2}>
                   <Heading size="lg">
-                    Welcome back, {user?.name}! 👋
+                    {t('dashboard.welcomeBack')}, {user?.name}! 👋
                   </Heading>
                   <Text color="blue.100">
-                    Ready to continue your massage therapy journey?
+                    {t('dashboard.subtitle')}
                   </Text>
                 </VStack>
                 <motion.div
@@ -153,7 +155,7 @@ const Dashboard = () => {
 
               <Box mt={6}>
                 <Flex justify="space-between" align="center" mb={2}>
-                  <Text fontSize="sm" fontWeight="medium">Overall Progress</Text>
+                  <Text fontSize="sm" fontWeight="medium">{t('dashboard.overallProgress')}</Text>
                   <Text fontSize="sm" fontWeight="medium">{completionPercentage}%</Text>
                 </Flex>
                 <Progress value={completionPercentage} colorScheme="whiteAlpha" bg="blue.600" />
@@ -207,7 +209,7 @@ const Dashboard = () => {
           <Card>
             <CardBody p={6}>
               <Heading size="md" color="gray.900" mb={6}>
-                Recent Activity
+                {t('dashboard.recentActivity.title')}
               </Heading>
               <VStack spacing={4} align="stretch">
                 {recentActivity.map((activity, index) => (
@@ -248,7 +250,7 @@ const Dashboard = () => {
           <Card>
             <CardBody p={6}>
               <Heading size="md" color="gray.900" mb={6}>
-                Quick Actions
+                {t('dashboard.quickActions.title')}
               </Heading>
               <VStack spacing={3} align="stretch">
                 <Button
@@ -260,7 +262,7 @@ const Dashboard = () => {
                   p={3}
                   onClick={handleContinueLearning}
                 >
-                  Continue Learning
+                  {t('dashboard.quickActions.continueLearning')}
                 </Button>
                 <Button
                   leftIcon={<FaBookOpen />}
@@ -271,7 +273,7 @@ const Dashboard = () => {
                   p={3}
                   onClick={() => navigate('/app/courses')}
                 >
-                  View All Courses
+                  {t('dashboard.quickActions.viewAllCourses')}
                 </Button>
                 <Button
                   leftIcon={<FaTrophy />}
@@ -282,7 +284,7 @@ const Dashboard = () => {
                   p={3}
                   onClick={() => navigate('/app/certificates')}
                 >
-                  View Certificates
+                  {t('dashboard.quickActions.viewCertificates')}
                 </Button>
               </VStack>
             </CardBody>

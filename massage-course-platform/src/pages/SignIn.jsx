@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useLanguage } from '../hooks/useLanguage'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import iconImage from '../assets/icon.png'
@@ -30,6 +31,7 @@ const SignIn = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { login, isLoading, error, clearError } = useAuth()
+  const { t } = useLanguage()
   const [showPassword, setShowPassword] = useState(false)
   
   const {
@@ -45,12 +47,11 @@ const SignIn = () => {
     try {
       clearError()
       await login(data)
-      toast.success('Welcome back! You have successfully signed in.')
+      toast.success(t('auth.signIn.signInSuccess'))
       navigate(from, { replace: true })
     } catch (error) {
       console.error('Login error:', error)
       
-      // Handle Laravel validation errors
       if (error.response?.status === 422 && error.response?.data?.errors) {
         Object.keys(error.response.data.errors).forEach(field => {
           setError(field, {
@@ -59,9 +60,9 @@ const SignIn = () => {
           })
         })
       } else if (error.response?.status === 401) {
-        toast.error('Invalid credentials. Please check your email and password.')
+        toast.error(t('auth.signIn.invalidCredentials'))
       } else {
-        toast.error(error.response?.data?.message || 'Sign in failed. Please try again.')
+        toast.error(error.response?.data?.message || t('auth.signIn.signInFailed'))
       }
     }
   }
@@ -72,7 +73,6 @@ const SignIn = () => {
 
   return (
     <Box minH="100vh" bg="linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)">
-      {/* Header */}
       <Box py={4} borderBottom="1px solid" borderColor="gray.200" bg="white">
         <Container maxW="7xl">
           <Flex justify="space-between" align="center">
@@ -99,13 +99,12 @@ const SignIn = () => {
               onClick={() => navigate('/')}
               size="sm"
             >
-              Back to Home
+              {t('common.backToHome')}
             </Button>
           </Flex>
         </Container>
       </Box>
 
-      {/* Main Content */}
       <Container maxW="md" py={12}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -123,14 +122,13 @@ const SignIn = () => {
               <VStack spacing={8}>
                 <VStack spacing={2} textAlign="center">
                   <Heading size="lg" color="gray.900">
-                    Welcome Back
+                    {t('auth.signIn.title')}
                   </Heading>
                   <Text color="gray.600">
-                    Sign in to continue your massage therapy journey
+                    {t('auth.signIn.subtitle')}
                   </Text>
                 </VStack>
 
-                {/* Error Alert - Custom */}
                 {error && (
                   <Box
                     bg="red.50"
@@ -151,7 +149,6 @@ const SignIn = () => {
                   </Box>
                 )}
 
-                {/* Social Login */}
                 <VStack spacing={3} w="full">
                   <Button
                     leftIcon={<FaGoogle />}
@@ -162,7 +159,7 @@ const SignIn = () => {
                     isLoading={isLoading}
                     onClick={() => handleSocialLogin('Google')}
                   >
-                    Continue with Google
+                    {t('auth.signIn.continueWithGoogle')}
                   </Button>
                 </VStack>
 
@@ -174,24 +171,23 @@ const SignIn = () => {
                   <Box flex={1} h="1px" bg="gray.200" />
                 </HStack>
 
-                {/* Login Form */}
                 <Box w="full">
                   <form onSubmit={handleSubmit(onSubmit)}>
                     <VStack spacing={4}>
                       <Box w="full">
                         <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-                          Email address *
+                          {t('auth.signIn.emailLabel')} *
                         </Text>
                         <Input
                           {...register('email', {
-                            required: 'Email is required',
+                            required: t('auth.register.validation.emailRequired'),
                             pattern: {
                               value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                              message: 'Please enter a valid email address'
+                              message: t('auth.register.validation.emailInvalid')
                             }
                           })}
                           type="email"
-                          placeholder="Enter your email"
+                          placeholder={t('auth.signIn.emailPlaceholder')}
                           size="lg"
                           borderRadius="xl"
                           borderColor={errors.email ? "red.500" : "gray.300"}
@@ -206,19 +202,19 @@ const SignIn = () => {
 
                       <Box w="full">
                         <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-                          Password *
+                          {t('auth.signIn.passwordLabel')} *
                         </Text>
                         <Box position="relative" w="full">
                           <Input
                             {...register('password', {
-                              required: 'Password is required',
+                              required: t('auth.register.validation.passwordRequired'),
                               minLength: {
                                 value: 6,
                                 message: 'Password must be at least 6 characters'
                               }
                             })}
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Enter your password"
+                            placeholder={t('auth.signIn.passwordPlaceholder')}
                             size="lg"
                             borderRadius="xl"
                             borderColor={errors.password ? "red.500" : "gray.300"}
@@ -234,7 +230,7 @@ const SignIn = () => {
                             right="0.5rem"
                             top="50%"
                             transform="translateY(-50%)"
-                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showPassword ? t('video.controls.hidePassword') : t('video.controls.showPassword')}
                           />
                         </Box>
                         {errors.password && (
@@ -252,19 +248,19 @@ const SignIn = () => {
                         color="white"
                         borderRadius="xl"
                         isLoading={isLoading || isSubmitting}
-                        loadingText="Signing in..."
+                        loadingText={t('auth.signIn.signingIn')}
                         _hover={{
                           transform: 'translateY(-1px)',
                           boxShadow: 'lg'
                         }}
                       >
-                        Sign In
+                        {t('auth.signIn.signInButton')}
                       </Button>
 
                       <Box textAlign="center" w="full">
                         <Link to="/forgot-password">
                           <Text fontSize="sm" color="blue.500" fontWeight="600">
-                            Forgot password?
+                            {t('auth.signIn.forgotPassword')}
                           </Text>
                         </Link>
                       </Box>
