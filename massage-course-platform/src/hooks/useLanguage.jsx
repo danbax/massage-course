@@ -47,7 +47,6 @@ export const LanguageProvider = ({ children }) => {
   // Dynamic import function for language files
   const loadLanguage = async (languageCode) => {
     try {
-      setIsLoading(true)
       const module = await import(`../data/languages/${languageCode}.js`)
       return module.default || module.translations
     } catch (error) {
