@@ -30,7 +30,7 @@ jobs:
           npm ci
           npm run build
 
-      # 3. Merge React build into Laravel public/
+      # 3. Merge React build into Laravel public/.
       - name: Copy React build → Laravel public
         run: |
           rm -rf massage-course-backend/public/*
