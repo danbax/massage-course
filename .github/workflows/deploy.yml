@@ -1,17 +1,6 @@
-name: CI & Deploy → GoDaddy Shared
-
-# Run on every push to main
-on:
-  push:
-    branches: [ main ]
-
 jobs:
   build-and-deploy:
-    name: Build & Deploy
-    runs-on: ubuntu-latest
-    # Tie this job to your environment (pulls in those secrets)
-    environment: massage_course
-
+    # …
     steps:
       # 1. Checkout your repo
       - name: Checkout code
@@ -34,7 +23,7 @@ jobs:
       - name: Copy React build → Laravel public
         run: |
           rm -rf massage-course-backend/public/*
-          cp -R massage-course-platform/build/* massage-course-backend/public/
+          cp -R massage-course-platform/dist/*  massage-course-backend/public/
 
       # 4. Prepare PHP & Laravel
       - name: Setup PHP 8.2
@@ -51,7 +40,6 @@ jobs:
           php artisan view:cache
 
       # 5. Deploy via FTP to your GoDaddy shared account
-      #    (Secrets come from the `massage_course` environment)
       - name: Deploy backend via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
         with:
