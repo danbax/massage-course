@@ -1,6 +1,5 @@
-name: CI & Deploy → GoDaddy Shared
+name: CI & Deploy → GoDaddy Shared (Optimized FTP)
 
-# Run on every push to main
 on:
   push:
     branches: [ main ]
@@ -9,17 +8,14 @@ jobs:
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    # Tie this job to your environment (pulls in those secrets)
     environment: massage_course
 
     steps:
-      # 1. Checkout your repo
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      # 2. Build the front-end (React)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -30,13 +26,11 @@ jobs:
           npm ci
           npm run build
 
-      # 3. Merge React build into Laravel public/.
       - name: Copy React build → Laravel public
         run: |
           rm -rf massage-course-backend/public/*
           cp -R massage-course-platform/dist/* massage-course-backend/public/
 
-      # 4. Prepare PHP & Laravel
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
         with:
@@ -50,25 +44,39 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
-      # 5. Deploy via FTP to your GoDaddy shared account
-      #    (Secrets come from the `massage_course` environment)
+      # Deploy with optimized settings
       - name: Deploy backend via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
         with:
-          server:      ${{ secrets.FTP_HOST }}
-          username:    ${{ secrets.FTP_USERNAME }}
-          password:    ${{ secrets.FTP_PASSWORD }}
-          protocol:    ftp
-          local-dir:   massage-course-backend/
-          server-dir:  /home/${{ secrets.FTP_USERNAME }}/massage-course-backend/
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: massage-course-backend/
+          server-dir: /home/${{ secrets.FTP_USERNAME }}/massage-course-backend/
+          # Optimization settings
+          exclude: |
+            **/public/**
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.DS_Store
+            **/Thumbs.db
+          # Only upload changed files
+          state-name: .ftp-deploy-sync-backend-state.json
+          dry-run: false
+          log-level: minimal
 
-      # Deploy to main domain (public_html root)
-      - name: Deploy to main domain
+      - name: Deploy frontend via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
         with:
-          server:      ${{ secrets.FTP_HOST }}
-          username:    ${{ secrets.FTP_USERNAME }}
-          password:    ${{ secrets.FTP_PASSWORD }}
-          protocol:    ftp
-          local-dir:   massage-course-backend/public/
-          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: massage-course-backend/public/
+          server-dir: /home/${{ secrets.FTP_USERNAME }}/public_html/
+          # Only upload changed files
+          state-name: .ftp-deploy-sync-frontend-state.json
+          dry-run: false
+          log-level: minimal
