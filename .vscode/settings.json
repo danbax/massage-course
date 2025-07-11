@@ -1,5 +1,0 @@
-{
-  "security.workspace.trust.enabled": false,
-  "extensions.supportUntrustedWorkspaces": true,
-  "chat.tools.autoApprove": true
-}

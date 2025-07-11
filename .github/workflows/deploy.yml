@@ -1,0 +1,83 @@
+name: CI & Deploy → GoDaddy Shared
+
+# Run on every push to main
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    # Tie this job to your environment (pulls in those secrets)
+    environment: massage_course
+
+    steps:
+      # 1. Checkout your repo
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2. Build the front-end (React)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install & build React
+        working-directory: ./massage-course-platform
+        run: |
+          npm ci
+          npm run build
+
+      # 3. Merge React build into Laravel public/
+      - name: Copy React build → Laravel public
+        run: |
+          rm -rf massage-course-backend/public/*
+          cp -R massage-course-platform/build/* massage-course-backend/public/
+
+      # 4. Prepare PHP & Laravel
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, tokenizer, xml, json, openssl, fileinfo
+      - name: Install & optimize Laravel
+        working-directory: ./massage-course-backend
+        run: |
+          composer install --no-dev --optimize-autoloader
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+      # 5. Deploy via FTP to your GoDaddy shared account
+      #    (Secrets come from the `massage_course` environment)
+      - name: Deploy backend via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server:      ${{ secrets.FTP_HOST }}
+          username:    ${{ secrets.FTP_USERNAME }}
+          password:    ${{ secrets.FTP_PASSWORD }}
+          protocol:    ftp
+          local-dir:   massage-course-backend
+          server-dir:  /home/${{ secrets.FTP_USERNAME }}/massage-course-backend
+
+      - name: Deploy public_html/massage-course
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server:      ${{ secrets.FTP_HOST }}
+          username:    ${{ secrets.FTP_USERNAME }}
+          password:    ${{ secrets.FTP_PASSWORD }}
+          protocol:    ftp
+          local-dir:   massage-course-backend/public
+          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/massage-course
+
+      - name: Deploy public_html/massagecourse
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server:      ${{ secrets.FTP_HOST }}
+          username:    ${{ secrets.FTP_USERNAME }}
+          password:    ${{ secrets.FTP_PASSWORD }}
+          protocol:    ftp
+          local-dir:   massage-course-backend/public
+          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/massagecourse
