@@ -60,7 +60,7 @@ jobs:
           password:    ${{ secrets.FTP_PASSWORD }}
           protocol:    ftp
           local-dir:   massage-course-backend/
-          server-dir:  /home/${{ secrets.FTP_USERNAME }}/massage-course-backend
+          server-dir:  /home/${{ secrets.FTP_USERNAME }}/massage-course-backend/
 
       - name: Deploy public_html/massage-course
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
@@ -70,7 +70,7 @@ jobs:
           password:    ${{ secrets.FTP_PASSWORD }}
           protocol:    ftp
           local-dir:   massage-course-backend/public/
-          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/massage-course
+          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/massage-course/
 
       - name: Deploy public_html/massagecourse
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
@@ -80,4 +80,4 @@ jobs:
           password:    ${{ secrets.FTP_PASSWORD }}
           protocol:    ftp
           local-dir:   massage-course-backend/public/
-          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/massagecourse
+          server-dir:  /home/${{ secrets.FTP_USERNAME }}/public_html/massagecourse/
