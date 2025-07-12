@@ -15,7 +15,9 @@ return new class extends Migration
             $table->integer('completed_lessons')->nullable();
             $table->integer('total_lessons')->nullable();
             $table->decimal('progress_percentage', 5, 2)->nullable();
-            $table->foreignId('last_lesson_id')->nullable()->constrained('lessons')->onDelete('set null');
+            // Changed from foreignId to unsignedInteger and removed constraint
+            // since lessons table has composite primary key
+            $table->unsignedInteger('last_lesson_id')->nullable();
             $table->integer('time_spent_minutes')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
@@ -24,12 +26,15 @@ return new class extends Migration
             $table->unique('user_id');
             $table->index('progress_percentage');
             $table->index('completed_at');
+            $table->index('last_lesson_id'); // Add index for performance
         });
 
         Schema::create('lesson_progress', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('lesson_id')->nullable()->constrained()->onDelete('cascade');
+            // Changed from foreignId to unsignedInteger and removed constraint
+            // since lessons table has composite primary key
+            $table->unsignedInteger('lesson_id')->nullable();
             $table->integer('watch_time_seconds')->nullable();
             $table->decimal('watch_percentage', 5, 2)->nullable();
             $table->boolean('is_completed')->nullable();
@@ -42,6 +47,7 @@ return new class extends Migration
             $table->unique(['user_id', 'lesson_id']);
             $table->index('is_completed');
             $table->index('completed_at');
+            $table->index('lesson_id'); // Add index for performance
         });
     }
 

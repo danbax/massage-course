@@ -34,17 +34,44 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
   const [error, setError] = useState(null)
   const [isReady, setIsReady] = useState(false)
 
-  // Use prop publicId or extract from videoUrl
-  const publicId = propPublicId || extractPublicIdFromUrl(videoUrl) || videoUrl
+  // Handle the new video URL format from the backend
+  // videoUrl can now be in formats like: "en/1.1", "ru/2.3", or full Cloudinary URLs
+  let publicId = propPublicId || videoUrl
+
+  // If videoUrl looks like the new format (language/module.lesson), use it directly
+  if (videoUrl && typeof videoUrl === 'string') {
+    // Check if it's already a full URL
+    if (videoUrl.startsWith('http')) {
+      publicId = extractPublicIdFromUrl(videoUrl) || videoUrl
+    } else if (videoUrl.includes('/') && videoUrl.includes('.')) {
+      // This looks like the new format: "en/1.1", "ru/2.3"
+      publicId = `videos/${videoUrl}`
+    } else {
+      // Fallback: treat as direct public ID
+      publicId = videoUrl
+    }
+  }
 
   // Generate video URL using our manual URL construction
-  // Try raw URL first to avoid transformation issues
-  const videoSrc = getCloudinaryRawVideoUrl(publicId) || getCloudinaryVideoUrl(publicId, quality)
-  const thumbnailSrc = poster || thumbnail || getCloudinaryThumbnailUrl(publicId)
+  // Try different URL formats to ensure compatibility
+  let videoSrc = null
+  
+  if (publicId) {
+    // Try raw URL first for the new format
+    videoSrc = getCloudinaryRawVideoUrl(publicId)
+    
+    // If raw URL fails, try with transformations
+    if (!videoSrc) {
+      videoSrc = getCloudinaryVideoUrl(publicId, quality)
+    }
+  }
 
-  console.log('CloudinaryVideoNew - Public ID:', publicId)
-  console.log('CloudinaryVideoNew - Video URL:', videoSrc)
-  console.log('CloudinaryVideoNew - Thumbnail URL:', thumbnailSrc)
+  const thumbnailSrc = poster || thumbnail || (publicId ? getCloudinaryThumbnailUrl(publicId) : null)
+
+  console.log('CloudinaryVideoNew - Input videoUrl:', videoUrl)
+  console.log('CloudinaryVideoNew - Resolved Public ID:', publicId)
+  console.log('CloudinaryVideoNew - Generated Video URL:', videoSrc)
+  console.log('CloudinaryVideoNew - Generated Thumbnail URL:', thumbnailSrc)
 
   // Expose video methods to parent component
   useImperativeHandle(ref, () => ({
@@ -82,7 +109,8 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
       duration: e.target.duration,
       videoWidth: e.target.videoWidth,
       videoHeight: e.target.videoHeight,
-      currentTime: e.target.currentTime
+      currentTime: e.target.currentTime,
+      src: e.target.src
     })
     setIsReady(true)
     setError(null)
@@ -97,14 +125,15 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
       readyState: e.target.readyState,
       src: e.target.src
     })
-    setError('Failed to load video. Please check if the video exists in Cloudinary.')
+    setError(`Failed to load video: ${publicId}. Please check if the video exists in Cloudinary.`)
     onError?.(e)
   }
 
   const handlePlay = (e) => {
     console.log('Video play event:', {
       currentTime: e.target.currentTime,
-      duration: e.target.duration
+      duration: e.target.duration,
+      src: e.target.src
     })
     setError(null)
     onPlay?.(e)
@@ -128,7 +157,7 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
 
   const handleTimeUpdate = (e) => {
     // Only log occasionally to avoid spam
-    if (Math.floor(e.target.currentTime) % 5 === 0) {
+    if (Math.floor(e.target.currentTime) % 10 === 0 && e.target.currentTime > 0) {
       console.log('Video time update:', {
         currentTime: e.target.currentTime,
         duration: e.target.duration
@@ -138,15 +167,18 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
   }
 
   const handleLoadStart = (e) => {
+    console.log('Video load start:', { src: e.target.src })
     onLoadStart?.(e)
   }
 
   const handleCanPlay = (e) => {
+    console.log('Video can play:', { src: e.target.src })
     setIsReady(true)
     onCanPlay?.(e)
   }
 
   const handleLoadedData = (e) => {
+    console.log('Video loaded data:', { src: e.target.src })
     onLoadedData?.(e)
   }
 
@@ -199,7 +231,7 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
             Video Error
           </Text>
           <Text fontSize="sm" color="red.500" textAlign="center">
-            Could not generate video URL
+            Could not generate video URL for: {publicId}
           </Text>
         </VStack>
       </Box>
@@ -226,7 +258,7 @@ const CloudinaryVideoNew = forwardRef((props, ref) => {
           <Text fontSize="lg" fontWeight="medium" color="red.600">
             Video Error
           </Text>
-          <Text fontSize="sm" color="red.500" textAlign="center">
+          <Text fontSize="sm" color="red.500" textAlign="center" px={4}>
             {error}
           </Text>
         </VStack>

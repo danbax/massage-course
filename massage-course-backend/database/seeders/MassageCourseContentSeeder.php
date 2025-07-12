@@ -49,7 +49,7 @@ class MassageCourseContentSeeder extends Seeder
                 'title_ru' => "То, что действительно, ДЕЙСТВИТЕЛЬНО важно",
                 'description_en' => "Essential foundations that will make or break your massage therapy success.",
                 'description_ru' => "Основы, которые определят успех или неудачу в массажной терапии.",
-                'duration' => 180,
+                'duration' => 250,
                 'lessons' => [
                     [
                         'title_en' => "Why This Chapter Will Save Your Career",
@@ -100,10 +100,26 @@ class MassageCourseContentSeeder extends Seeder
                         'is_free' => false
                     ],
                     [
-                        'title_en' => "Professional Boundaries",
-                        'title_ru' => "Профессиональные границы",
-                        'description_en' => "What areas to avoid and how to maintain professionalism.",
-                        'description_ru' => "Каких областей избегать и как поддерживать профессионализм.",
+                        'title_en' => "The Nope List - Areas We Don't Go",
+                        'title_ru' => "Список запретов - области, где мы не работаем",
+                        'description_en' => "Professional boundaries and areas to avoid for safety and ethics.",
+                        'description_ru' => "Профессиональные границы и области, которых следует избегать для безопасности и этики.",
+                        'duration' => 18,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "When to Say That's Above My Pay Grade",
+                        'title_ru' => "Когда сказать: это выше моей квалификации",
+                        'description_en' => "Knowing when to refer clients to medical professionals.",
+                        'description_ru' => "Знание того, когда направлять клиентов к медицинским специалистам.",
+                        'duration' => 12,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Practice Makes Perfect and Also Makes Money",
+                        'title_ru' => "Практика приносит совершенство и деньги",
+                        'description_en' => "How to practice effectively and get honest feedback from guinea pigs.",
+                        'description_ru' => "Как эффективно практиковаться и получать честную обратную связь от подопытных.",
                         'duration' => 20,
                         'is_free' => false
                     ],
@@ -122,7 +138,7 @@ class MassageCourseContentSeeder extends Seeder
                 'title_ru' => "Основы тела (нескучная версия)",
                 'description_en' => "Essential anatomy and physiology knowledge for effective massage therapy.",
                 'description_ru' => "Основные знания анатомии и физиологии для эффективной массажной терапии.",
-                'duration' => 140,
+                'duration' => 175,
                 'lessons' => [
                     [
                         'title_en' => "Anatomy Basics",
@@ -141,10 +157,34 @@ class MassageCourseContentSeeder extends Seeder
                         'is_free' => false
                     ],
                     [
-                        'title_en' => "Understanding Fascia and Blood Flow",
-                        'title_ru' => "Понимание фасции и кровотока",
-                        'description_en' => "How fascia and circulation affect your massage work.",
-                        'description_ru' => "Как фасция и кровообращение влияют на вашу массажную работу.",
+                        'title_en' => "Bone Landmarks",
+                        'title_ru' => "Костные ориентиры",
+                        'description_en' => "Important anatomical landmarks that help you navigate the body.",
+                        'description_ru' => "Важные анатомические ориентиры, которые помогают ориентироваться в теле.",
+                        'duration' => 20,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Understanding Nerves",
+                        'title_ru' => "Понимание нервов",
+                        'description_en' => "Basic nerve anatomy and how to recognize nerve-related issues.",
+                        'description_ru' => "Основы анатомии нервов и как распознать проблемы, связанные с нервами.",
+                        'duration' => 22,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Blood Flow Basics",
+                        'title_ru' => "Основы кровотока",
+                        'description_en' => "How circulation works and why massage direction matters.",
+                        'description_ru' => "Как работает кровообращение и почему важно направление массажа.",
+                        'duration' => 18,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Understanding Fascia",
+                        'title_ru' => "Понимание фасции",
+                        'description_en' => "The connective tissue that connects everything in the body.",
+                        'description_ru' => "Соединительная ткань, которая связывает все в теле.",
                         'duration' => 25,
                         'is_free' => false
                     ],
@@ -153,7 +193,7 @@ class MassageCourseContentSeeder extends Seeder
                         'title_ru' => "Распространенные проблемы",
                         'description_en' => "Typical client issues and how to address them safely.",
                         'description_ru' => "Типичные проблемы клиентов и способы их безопасного решения.",
-                        'duration' => 30,
+                        'duration' => 35,
                         'is_free' => false
                     ]
                 ]
@@ -163,8 +203,16 @@ class MassageCourseContentSeeder extends Seeder
                 'title_ru' => "Техники, которые действительно работают",
                 'description_en' => "Master the core massage techniques that form the foundation of effective therapy.",
                 'description_ru' => "Освойте основные техники массажа, составляющие основу эффективной терапии.",
-                'duration' => 150,
+                'duration' => 175,
                 'lessons' => [
+                    [
+                        'title_en' => "Let's Get Technical But Not Too Technical",
+                        'title_ru' => "Давайте станем техничными, но не слишком",
+                        'description_en' => "Introduction to massage techniques - quality over quantity approach.",
+                        'description_ru' => "Введение в техники массажа - подход качества, а не количества.",
+                        'duration' => 15,
+                        'is_free' => false
+                    ],
                     [
                         'title_en' => "Soft Hands - Your Secret Weapon",
                         'title_ru' => "Мягкие руки - ваше секретное оружие",
@@ -190,11 +238,19 @@ class MassageCourseContentSeeder extends Seeder
                         'is_free' => false
                     ],
                     [
-                        'title_en' => "Compression and Friction Work",
-                        'title_ru' => "Компрессия и фрикционная работа",
-                        'description_en' => "Power moves using forearms and precise friction techniques.",
-                        'description_ru' => "Силовые движения с использованием предплечий и точные техники трения.",
-                        'duration' => 40,
+                        'title_en' => "Compression - The Power Move",
+                        'title_ru' => "Компрессия - силовое движение",
+                        'description_en' => "Using forearms for broad, deep pressure that saves your hands.",
+                        'description_ru' => "Использование предплечий для широкого, глубокого давления, которое сберегает ваши руки.",
+                        'duration' => 25,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Friction - The Detail Work",
+                        'title_ru' => "Трение - детальная работа",
+                        'description_en' => "Precision techniques for stubborn knots and problem areas.",
+                        'description_ru' => "Точные техники для упрямых узлов и проблемных зон.",
+                        'duration' => 25,
                         'is_free' => false
                     ],
                     [
@@ -212,8 +268,16 @@ class MassageCourseContentSeeder extends Seeder
                 'title_ru' => "Последовательность массажа всего тела",
                 'description_en' => "Learn the complete full-body massage sequence from start to finish.",
                 'description_ru' => "Изучите полную последовательность массажа всего тела от начала до конца.",
-                'duration' => 200,
+                'duration' => 240,
                 'lessons' => [
+                    [
+                        'title_en' => "Getting Your Head in the Game",
+                        'title_ru' => "Настройка на работу",
+                        'description_en' => "Mental preparation and centering before starting any massage.",
+                        'description_ru' => "Ментальная подготовка и центрирование перед началом любого массажа.",
+                        'duration' => 15,
+                        'is_free' => false
+                    ],
                     [
                         'title_en' => "Feet First - Everyone's Secret Favorite",
                         'title_ru' => "Ноги первыми - секретный фаворит всех",
@@ -227,7 +291,7 @@ class MassageCourseContentSeeder extends Seeder
                         'title_ru' => "Ноги - рабочие лошадки",
                         'description_en' => "Comprehensive leg massage for circulation and relaxation.",
                         'description_ru' => "Комплексный массаж ног для кровообращения и расслабления.",
-                        'duration' => 30,
+                        'duration' => 35,
                         'is_free' => false
                     ],
                     [
@@ -247,11 +311,27 @@ class MassageCourseContentSeeder extends Seeder
                         'is_free' => false
                     ],
                     [
+                        'title_en' => "The Flip - Make It Smooth Not Awkward",
+                        'title_ru' => "Переворот - сделайте его плавным, а не неловким",
+                        'description_en' => "Professional techniques for transitioning clients from prone to supine.",
+                        'description_ru' => "Профессиональные техники для перехода клиентов из положения лежа на животе в положение лежа на спине.",
+                        'duration' => 12,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Front of Body - The Victory Lap",
+                        'title_ru' => "Передняя часть тела - круг почета",
+                        'description_en' => "Arms, front legs, and face massage to complete the experience.",
+                        'description_ru' => "Массаж рук, передней части ног и лица для завершения процедуры.",
+                        'duration' => 35,
+                        'is_free' => false
+                    ],
+                    [
                         'title_en' => "The Perfect Ending",
                         'title_ru' => "Идеальное окончание",
                         'description_en' => "How to conclude sessions professionally and memorably.",
                         'description_ru' => "Как завершить сессии профессионально и запоминающе.",
-                        'duration' => 15,
+                        'duration' => 18,
                         'is_free' => false
                     ]
                 ]
@@ -261,14 +341,14 @@ class MassageCourseContentSeeder extends Seeder
                 'title_ru' => "Создание массажного бизнеса",
                 'description_en' => "Build a successful massage therapy career with business skills and strategies.",
                 'description_ru' => "Постройте успешную карьеру массажного терапевта с бизнес-навыками и стратегиями.",
-                'duration' => 90,
+                'duration' => 120,
                 'lessons' => [
                     [
                         'title_en' => "Different Ways to Work",
                         'title_ru' => "Разные способы работы",
                         'description_en' => "Explore mobile, home studio, and employment options.",
                         'description_ru' => "Исследуйте мобильные, домашние студии и варианты трудоустройства.",
-                        'duration' => 25,
+                        'duration' => 30,
                         'is_free' => false
                     ],
                     [
@@ -286,24 +366,65 @@ class MassageCourseContentSeeder extends Seeder
                         'description_ru' => "Стратегии маркетинга и отношений с клиентами, которые работают.",
                         'duration' => 35,
                         'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Taking Care of Yourself",
+                        'title_ru' => "Забота о себе",
+                        'description_en' => "Self-care strategies to maintain a long, healthy massage career.",
+                        'description_ru' => "Стратегии самообслуживания для поддержания долгой, здоровой карьеры массажиста.",
+                        'duration' => 25,
+                        'is_free' => false
                     ]
                 ]
             ],
             [
-                'title_en' => "Special Situations and Advanced Techniques",
-                'title_ru' => "Особые ситуации и продвинутые техники",
-                'description_en' => "Handle special populations and advanced massage scenarios confidently.",
-                'description_ru' => "Уверенно работайте с особыми группами и продвинутыми массажными сценариями.",
+                'title_en' => "Essential Oils and Advanced Techniques",
+                'title_ru' => "Эфирные масла и продвинутые техники",
+                'description_en' => "Enhance your massage practice with essential oils and specialized knowledge.",
+                'description_ru' => "Улучшите свою массажную практику с помощью эфирных масел и специализированных знаний.",
                 'duration' => 120,
                 'lessons' => [
                     [
                         'title_en' => "Essential Oils - Making Good Massage Great",
                         'title_ru' => "Эфирные масла - делаем хороший массаж отличным",
-                        'description_en' => "Safe and effective essential oil use in massage therapy.",
-                        'description_ru' => "Безопасное и эффективное использование эфирных масел в массажной терапии.",
+                        'description_en' => "Introduction to using essential oils to enhance the massage experience.",
+                        'description_ru' => "Введение в использование эфирных масел для улучшения массажного опыта.",
+                        'duration' => 25,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Don't Poison Your Clients - Essential Oil Safety",
+                        'title_ru' => "Не отравляйте клиентов - безопасность эфирных масел",
+                        'description_en' => "Critical safety information for using essential oils responsibly.",
+                        'description_ru' => "Критически важная информация о безопасности для ответственного использования эфирных масел.",
                         'duration' => 30,
                         'is_free' => false
                     ],
+                    [
+                        'title_en' => "Making Magic Potions - Blending Basics",
+                        'title_ru' => "Создание волшебных зелий - основы смешивания",
+                        'description_en' => "How to create effective essential oil blends for different purposes.",
+                        'description_ru' => "Как создавать эффективные смеси эфирных масел для разных целей.",
+                        'duration' => 35,
+                        'is_free' => false
+                    ],
+                    [
+                        'title_en' => "Using Essential Oils Like a Pro",
+                        'title_ru' => "Использование эфирных масел как профессионал",
+                        'description_en' => "Professional application techniques and client consultation.",
+                        'description_ru' => "Профессиональные техники применения и консультирование клиентов.",
+                        'duration' => 30,
+                        'is_free' => false
+                    ]
+                ]
+            ],
+            [
+                'title_en' => "Special Situations and Client Care",
+                'title_ru' => "Особые ситуации и уход за клиентами",
+                'description_en' => "Handle special populations and challenging situations with confidence.",
+                'description_ru' => "Уверенно работайте с особыми группами населения и сложными ситуациями.",
+                'duration' => 65,
+                'lessons' => [
                     [
                         'title_en' => "Special Populations",
                         'title_ru' => "Особые группы населения",
@@ -315,16 +436,8 @@ class MassageCourseContentSeeder extends Seeder
                     [
                         'title_en' => "Common Problems and Solutions",
                         'title_ru' => "Распространенные проблемы и решения",
-                        'description_en' => "Troubleshoot challenges and handle difficult situations.",
-                        'description_ru' => "Решение проблем и работа со сложными ситуациями.",
-                        'duration' => 25,
-                        'is_free' => false
-                    ],
-                    [
-                        'title_en' => "Your Massage Journey Starts Now!",
-                        'title_ru' => "Ваше массажное путешествие начинается сейчас!",
-                        'description_en' => "Final thoughts and next steps for your massage career.",
-                        'description_ru' => "Заключительные мысли и следующие шаги для вашей массажной карьеры.",
+                        'description_en' => "Troubleshoot challenges and handle difficult situations professionally.",
+                        'description_ru' => "Решение проблем и профессиональная работа со сложными ситуациями.",
                         'duration' => 25,
                         'is_free' => false
                     ]
@@ -349,8 +462,13 @@ class MassageCourseContentSeeder extends Seeder
                 ]);
 
                 foreach ($moduleInfo['lessons'] as $lessonIndex => $lessonInfo) {
+                    $lessonId = $lessonIndex + 1;
+                    $videoUrl = "{$language}/{$module->id}.{$lessonId}";
+                    
                     Lesson::create([
+                        'id' => $lessonId,
                         'module_id' => $module->id,
+                        'language' => $language,
                         'title' => $language === 'en' ? $lessonInfo['title_en'] : $lessonInfo['title_ru'],
                         'description' => $language === 'en' ? $lessonInfo['description_en'] : $lessonInfo['description_ru'],
                         'content' => $this->generateLessonContent(
@@ -358,12 +476,11 @@ class MassageCourseContentSeeder extends Seeder
                             $language === 'en' ? $lessonInfo['description_en'] : $lessonInfo['description_ru'],
                             $language
                         ),
-                        'language' => $language,
-                        'video_url' => null,
-                        'video_duration' => null,
+                        'video_url' => $videoUrl,
+                        'video_duration' => $lessonInfo['duration'] * 60,
                         'duration_minutes' => $lessonInfo['duration'],
                         'thumbnail' => null,
-                        'order' => $lessonIndex + 1,
+                        'order' => $lessonId,
                         'is_published' => true,
                         'is_free' => $lessonInfo['is_free'],
                         'has_quiz' => $lessonIndex % 3 === 2,
@@ -375,16 +492,17 @@ class MassageCourseContentSeeder extends Seeder
                             $language === 'en' ? 'Practice with confidence' : 'Практиковать с уверенностью'
                         ]),
                         'estimated_duration' => $lessonInfo['duration'],
-                        'difficulty_level' => $moduleIndex < 2 ? 'beginner' : ($moduleIndex < 5 ? 'intermediate' : 'advanced'),
+                        'difficulty_level' => $moduleIndex < 2 ? 'beginner' : ($moduleIndex < 6 ? 'intermediate' : 'advanced'),
                     ]);
                 }
             }
         }
 
-        $this->command->info('Massage course content seeded successfully!');
+        $this->command->info('Complete massage course content seeded successfully!');
         $this->command->info('Created modules and lessons in both English and Russian.');
         $this->command->info('Total modules per language: ' . count($moduleData));
         $this->command->info('Total lessons per language: ' . collect($moduleData)->sum(fn($m) => count($m['lessons'])));
+        $this->command->info('Video URLs format: [language]/[module_id].[lesson_id]');
     }
 
     private function generateLessonContent(string $title, string $description, string $language): string

@@ -1,5 +1,4 @@
 <?php
-// 2024_01_01_000000_create_learning_structure.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -22,11 +21,13 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index('order');
+            $table->index(['language', 'order']);
         });
 
         Schema::create('lessons', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('module_id')->nullable()->constrained()->onDelete('cascade');
+            $table->integer('id');
+            $table->foreignId('module_id')->constrained()->onDelete('cascade');
+            $table->string('language');
             $table->string('title')->nullable();
             $table->text('description')->nullable();
             $table->longText('content')->nullable();
@@ -43,11 +44,11 @@ return new class extends Migration
             $table->json('learning_objectives')->nullable();
             $table->integer('estimated_duration')->nullable();
             $table->enum('difficulty_level', ['beginner', 'intermediate', 'advanced'])->nullable();
-            $table->string('language')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['module_id', 'order']);
+            $table->primary(['id', 'module_id', 'language']);
+            $table->index(['module_id', 'language', 'order']);
             $table->index('is_free');
         });
     }

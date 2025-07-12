@@ -94,7 +94,10 @@ const AppContent = () => {
               <Route index element={<Navigate to="/app/courses" replace />} />
               <Route path="courses" element={<Courses />} />
               <Route path="video" element={<VideoRedirect />} />
-              <Route path="video/:lessonId" element={<VideoPlayer />} />
+              {/* New video routing format: /video/moduleId/lessonId */}
+              <Route path="video/:moduleId/:lessonId" element={<VideoPlayer />} />
+              {/* Legacy support for old URLs: /video/lessonId -> handled by VideoRedirect */}
+              <Route path="video/:legacyLessonId" element={<VideoRedirect />} />
               <Route path="progress" element={<Progress />} />
               <Route path="certificates" element={<Certificates />} />
               <Route path="profile" element={<Profile />} />

@@ -52,23 +52,32 @@ class UserProgressSeeder extends Seeder
             ]);
 
             if ($completedLessons > 0) {
-                $lessons = Lesson::where('language', $userLanguage)
-                    ->inRandomOrder()
-                    ->limit($completedLessons)
+                // Get lessons in order instead of random to avoid duplicates
+                // Then take a random sample if needed
+                $allLessons = Lesson::where('language', $userLanguage)
+                    ->orderBy('id')
                     ->get();
 
-                foreach ($lessons as $lesson) {
-                    LessonProgress::create([
-                        'user_id' => $user->id,
-                        'lesson_id' => $lesson->id,
-                        'watch_time_seconds' => fake()->numberBetween(300, 3600),
-                        'watch_percentage' => fake()->numberBetween(80, 100),
-                        'is_completed' => true,
-                        'completed_at' => fake()->dateTimeBetween('-3 months', 'now'),
-                        'quiz_score' => fake()->boolean(70) ? fake()->numberBetween(70, 100) : null,
-                        'quiz_attempts' => fake()->numberBetween(1, 3),
-                        'notes' => fake()->boolean(30) ? fake()->sentence() : null,
-                    ]);
+                // Randomly shuffle and take the required number
+                $selectedLessonIds = $allLessons->pluck('id')->shuffle()->take($completedLessons);
+
+                foreach ($selectedLessonIds as $lessonId) {
+                    // Use updateOrCreate to avoid duplicate key violations
+                    LessonProgress::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'lesson_id' => $lessonId,
+                        ],
+                        [
+                            'watch_time_seconds' => fake()->numberBetween(300, 3600),
+                            'watch_percentage' => fake()->numberBetween(80, 100),
+                            'is_completed' => true,
+                            'completed_at' => fake()->dateTimeBetween('-3 months', 'now'),
+                            'quiz_score' => fake()->boolean(70) ? fake()->numberBetween(70, 100) : null,
+                            'quiz_attempts' => fake()->numberBetween(1, 3),
+                            'notes' => fake()->boolean(30) ? fake()->sentence() : null,
+                        ]
+                    );
                 }
             }
         }

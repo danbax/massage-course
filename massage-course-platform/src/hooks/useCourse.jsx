@@ -1,87 +1,111 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
-import { courseData } from '../data/courseData.jsx'
 import { progressApi } from '../api/progress'
+import { useLanguage } from './useLanguage'
 import { throttle } from '../utils/throttle'
 import toast from 'react-hot-toast'
 
 const CourseContext = createContext()
 
 export const CourseProvider = ({ children }) => {
-  const [lessons, setLessons] = useState(courseData.lessons)
+  const { currentLanguage } = useLanguage()
+  const [lessons, setLessons] = useState([])
+  const [modules, setModules] = useState([])
   const [currentLesson, setCurrentLesson] = useState(null)
   const [watchProgress, setWatchProgress] = useState({})
   const [isLoading, setIsLoading] = useState(true)
-  const [courseProgress, setCourseProgress] = useState(null) // Store backend course progress data
+  const [courseProgress, setCourseProgress] = useState(null)
 
-  // Load progress from server on mount
+  // Load course data and progress from server on mount and language change
   useEffect(() => {
-    const loadProgress = async () => {
+    const loadCourseData = async () => {
       try {
+        setIsLoading(true)
+        
+        // Fetch course progress which includes modules and lessons
         const data = await progressApi.getCourseProgress()
         
-        // Store the course progress data from backend
-        if (data?.course_progress) {
-          setCourseProgress(data.course_progress)
-        }
-        
         if (data?.modules) {
-          // Create a map of lesson ID to progress for easier lookup
-          const progressMap = {}
+          // Set modules for all languages
+          setModules(data.modules)
+          
+          // Flatten lessons from all modules and add composite keys
+          const allLessons = []
           data.modules.forEach(module => {
             if (module.lessons) {
-              module.lessons.forEach(serverLesson => {
-                if (serverLesson.progress) {
-                  progressMap[serverLesson.id] = serverLesson.progress
-                }
+              module.lessons.forEach(lesson => {
+                allLessons.push({
+                  ...lesson,
+                  module_id: module.id,
+                  module_title: module.title,
+                  language: lesson.language || currentLanguage,
+                  // Create composite key for progress tracking
+                  composite_key: `${module.id}-${lesson.id}-${lesson.language || currentLanguage}`,
+                  // Support for legacy IDs during migration
+                  legacy_id: lesson.legacy_id,
+                  global_id: lesson.global_id,
+                  completed: lesson.progress?.is_completed || false,
+                  videoUrl: lesson.video_url,
+                  // Ensure we have order field for sorting
+                  order: lesson.order || lesson.id
+                })
               })
             }
           })
           
-          // Update lessons with server progress
-          const updatedLessons = courseData.lessons.map(lesson => {
-            const progressData = progressMap[lesson.id]
-            if (progressData) {
-              return {
-                ...lesson,
-                completed: progressData.is_completed || false
-              }
-            }
-            return lesson
-          })
+          setLessons(allLessons)
           
-          setLessons(updatedLessons)
-          
-          // Update watch progress
+          // Extract watch progress using composite keys
           const watchProgressData = {}
-          Object.keys(progressMap).forEach(lessonId => {
-            const progress = progressMap[lessonId]
-            watchProgressData[lessonId] = parseFloat(progress.watch_percentage) || 0
+          allLessons.forEach(lesson => {
+            if (lesson.progress && lesson.composite_key) {
+              watchProgressData[lesson.composite_key] = parseFloat(lesson.progress.watch_percentage) || 0
+            }
           })
-          
           setWatchProgress(watchProgressData)
         } else {
+          // If no modules data, initialize empty arrays
+          setModules([])
+          setLessons([])
+          setWatchProgress({})
         }
+        
+        // Store course progress data
+        if (data?.course_progress) {
+          setCourseProgress(data.course_progress)
+        }
+        
       } catch (error) {
-        console.error('Failed to load progress from server:', error)
-        // Continue with local data if server fails
+        console.error('Failed to load course data:', error)
+        toast.error('Failed to load course data')
+        
+        // Initialize empty state on error
+        setModules([])
+        setLessons([])
+        setWatchProgress({})
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadProgress()
-  }, []) // Empty dependency array - only run on mount
+    loadCourseData()
+  }, [currentLanguage])
 
-  // Create throttled function once using useMemo to prevent recreation
+  // Create throttled function for saving progress
   const saveProgressToServer = useCallback(
-    async (lessonId, progress, duration) => {
+    async (compositeKey, progress, duration) => {
       try {
+        // Extract lesson info from composite key
+        const [moduleId, lessonId, language] = compositeKey.split('-')
+        
         const progressData = {
           watch_percentage: progress,
           watch_time_seconds: Math.floor((progress / 100) * (duration || 0))
         }
         
-        await progressApi.updateLessonProgress(lessonId, progressData)
+        // Update lesson progress on server
+        // Note: The API endpoint may need to be updated to handle composite keys
+        // For now, we'll use the lessonId and rely on the current language context
+        await progressApi.updateLessonProgress(parseInt(lessonId), progressData)
       } catch (error) {
         console.error('Failed to update watch progress:', error)
       }
@@ -89,30 +113,116 @@ export const CourseProvider = ({ children }) => {
     []
   )
 
-  // Create throttled version using useMemo to ensure it's only created once
+  // Create throttled version using useMemo
   const throttledSaveProgress = useMemo(
     () => throttle(saveProgressToServer, 5000),
     [saveProgressToServer]
   )
 
-  const markLessonComplete = async (lessonId) => {
+  // Find lesson by composite key (module_id, lesson_id, language)
+  const findLessonByCompositeKey = useCallback((moduleId, lessonId, language = currentLanguage) => {
+    return lessons.find(lesson => 
+      lesson.module_id === moduleId && 
+      lesson.id === lessonId && 
+      lesson.language === language
+    )
+  }, [lessons, currentLanguage])
+
+  // Get lessons for current language only
+  const getLessonsForLanguage = useCallback((language = currentLanguage) => {
+    return lessons.filter(l => l.language === language)
+  }, [lessons, currentLanguage])
+
+  // Get modules for current language only
+  const getModulesForLanguage = useCallback((language = currentLanguage) => {
+    return modules.filter(m => m.language === language)
+  }, [modules, currentLanguage])
+
+  // Get next lesson in sequence
+  const getNextLesson = useCallback((moduleId, lessonId, language = currentLanguage) => {
+    // First try to find next lesson in same module
+    const currentModuleLessons = lessons
+      .filter(l => l.module_id === moduleId && l.language === language)
+      .sort((a, b) => a.order - b.order)
+    
+    const currentIndex = currentModuleLessons.findIndex(l => l.id === lessonId)
+    
+    // Next lesson in same module
+    if (currentIndex >= 0 && currentIndex < currentModuleLessons.length - 1) {
+      return currentModuleLessons[currentIndex + 1]
+    }
+    
+    // If last lesson in module, find first lesson in next module
+    const sortedModules = modules
+      .filter(m => m.language === language)
+      .sort((a, b) => (a.order || a.id) - (b.order || b.id))
+    
+    const currentModuleIndex = sortedModules.findIndex(m => m.id === moduleId)
+    
+    if (currentModuleIndex >= 0 && currentModuleIndex < sortedModules.length - 1) {
+      const nextModule = sortedModules[currentModuleIndex + 1]
+      const nextModuleLessons = lessons
+        .filter(l => l.module_id === nextModule.id && l.language === language)
+        .sort((a, b) => a.order - b.order)
+      
+      return nextModuleLessons[0] || null
+    }
+    
+    return null
+  }, [lessons, modules, currentLanguage])
+
+  // Get previous lesson in sequence
+  const getPreviousLesson = useCallback((moduleId, lessonId, language = currentLanguage) => {
+    // First try to find previous lesson in same module
+    const currentModuleLessons = lessons
+      .filter(l => l.module_id === moduleId && l.language === language)
+      .sort((a, b) => a.order - b.order)
+    
+    const currentIndex = currentModuleLessons.findIndex(l => l.id === lessonId)
+    
+    // Previous lesson in same module
+    if (currentIndex > 0) {
+      return currentModuleLessons[currentIndex - 1]
+    }
+    
+    // If first lesson in module, find last lesson in previous module
+    const sortedModules = modules
+      .filter(m => m.language === language)
+      .sort((a, b) => (a.order || a.id) - (b.order || b.id))
+    
+    const currentModuleIndex = sortedModules.findIndex(m => m.id === moduleId)
+    
+    if (currentModuleIndex > 0) {
+      const previousModule = sortedModules[currentModuleIndex - 1]
+      const previousModuleLessons = lessons
+        .filter(l => l.module_id === previousModule.id && l.language === language)
+        .sort((a, b) => a.order - b.order)
+      
+      return previousModuleLessons[previousModuleLessons.length - 1] || null
+    }
+    
+    return null
+  }, [lessons, modules, currentLanguage])
+
+  const markLessonComplete = async (compositeKey) => {
     try {
+      // Extract lesson info from composite key
+      const [moduleId, lessonId, language] = compositeKey.split('-')
+      
       // Update local state immediately for better UX
       setLessons(prev => prev.map(lesson => 
-        lesson.id === lessonId 
-          ? { ...lesson, completed: true, current: false }
-          : lesson.id === lessonId + 1
-          ? { ...lesson, current: true }
+        lesson.composite_key === compositeKey
+          ? { ...lesson, completed: true }
           : lesson
       ))
       
       // Save to server
-      await progressApi.markLessonCompleted(lessonId)
+      await progressApi.markLessonCompleted(parseInt(lessonId))
       
       // Refresh progress data to get updated state from server
       setTimeout(() => {
         refreshProgress()
-      }, 1000) // Small delay to ensure server has processed the completion
+      }, 1000)
       
     } catch (error) {
       console.error('Failed to mark lesson as complete:', error)
@@ -120,23 +230,23 @@ export const CourseProvider = ({ children }) => {
       
       // Revert local state on error
       setLessons(prev => prev.map(lesson => 
-        lesson.id === lessonId 
+        lesson.composite_key === compositeKey
           ? { ...lesson, completed: false }
           : lesson
       ))
     }
   }
 
-  const updateWatchProgress = useCallback((lessonId, progress) => {
+  const updateWatchProgress = useCallback((compositeKey, progress) => {
     // Update local state immediately
     setWatchProgress(prev => ({
       ...prev,
-      [lessonId]: progress
+      [compositeKey]: progress
     }))
     
     // Save to server (throttled)
     const lessonDuration = currentLesson?.duration || 0
-    throttledSaveProgress(lessonId, progress, lessonDuration)
+    throttledSaveProgress(compositeKey, progress, lessonDuration)
   }, [currentLesson?.duration, throttledSaveProgress])
 
   const refreshProgress = useCallback(async () => {
@@ -144,96 +254,82 @@ export const CourseProvider = ({ children }) => {
     try {
       const response = await progressApi.getCourseProgress()
       
-      // Store the course progress data from backend
       if (response?.course_progress) {
         setCourseProgress(response.course_progress)
       }
       
       if (response?.modules) {
-        // Create a map of lesson ID to progress for easier lookup
-        const progressMap = {}
+        setModules(response.modules)
+        
+        const allLessons = []
         response.modules.forEach(module => {
           if (module.lessons) {
-            module.lessons.forEach(serverLesson => {
-              if (serverLesson.progress) {
-                progressMap[serverLesson.id] = serverLesson.progress
-              }
+            module.lessons.forEach(lesson => {
+              allLessons.push({
+                ...lesson,
+                module_id: module.id,
+                module_title: module.title,
+                language: lesson.language || currentLanguage,
+                composite_key: `${module.id}-${lesson.id}-${lesson.language || currentLanguage}`,
+                completed: lesson.progress?.is_completed || false,
+                videoUrl: lesson.video_url,
+                order: lesson.order || lesson.id
+              })
             })
           }
         })
         
-        // Update lessons with server progress
-        const updatedLessons = courseData.lessons.map(lesson => {
-          const progressData = progressMap[lesson.id]
-          if (progressData) {
-            return {
-              ...lesson,
-              completed: progressData.is_completed || false
-            }
-          }
-          return lesson
-        })
+        setLessons(allLessons)
         
-        setLessons(updatedLessons)
-        
-        // Update watch progress
         const watchProgressData = {}
-        Object.keys(progressMap).forEach(lessonId => {
-          const progress = progressMap[lessonId]
-          watchProgressData[lessonId] = parseFloat(progress.watch_percentage) || 0
+        allLessons.forEach(lesson => {
+          if (lesson.progress && lesson.composite_key) {
+            watchProgressData[lesson.composite_key] = parseFloat(lesson.progress.watch_percentage) || 0
+          }
         })
-        
         setWatchProgress(watchProgressData)
       }
     } catch (error) {
-      console.error('Failed to refresh progress from server:', error)
+      console.error('Failed to refresh progress:', error)
       toast.error('Failed to refresh progress data')
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [currentLanguage])
 
   const getProgress = () => {
-    // Use backend data if available, fallback to local calculation
     if (courseProgress) {
       return Math.round(parseFloat(courseProgress.progress_percentage) || 0)
     }
     
-    // Fallback to local calculation
-    const completed = lessons.filter(lesson => lesson.completed).length
-    const total = lessons.length
-    return Math.round((completed / total) * 100)
+    const currentLanguageLessons = getLessonsForLanguage(currentLanguage)
+    const completed = currentLanguageLessons.filter(lesson => lesson.completed).length
+    const total = currentLanguageLessons.length
+    return total > 0 ? Math.round((completed / total) * 100) : 0
   }
 
   const getTotalLessons = () => {
-    // Use backend total if available, fallback to local count
-    return courseProgress?.total_lessons || lessons.length
+    return courseProgress?.total_lessons || getLessonsForLanguage(currentLanguage).length
   }
 
   const getCompletedLessons = () => {
-    // Use backend count if available, fallback to local calculation
-    return courseProgress?.completed_lessons || lessons.filter(lesson => lesson.completed).length
+    return courseProgress?.completed_lessons || getLessonsForLanguage(currentLanguage).filter(l => l.completed).length
   }
 
   const getLastWatchedLesson = () => {
-    // Strategy: 
-    // 1. Find lesson with highest progress that isn't completed (user was watching)
-    // 2. If all watched lessons are completed, find first incomplete lesson
-    // 3. If all lessons are completed, return the last lesson
-    // 4. If no progress exists, return the first lesson
+    const currentLanguageLessons = getLessonsForLanguage(currentLanguage)
+    
+    if (currentLanguageLessons.length === 0) return null
     
     let lastWatched = null
     let highestProgress = 0
-    let hasAnyProgress = false
     
     // Check for lessons with watch progress that aren't completed
-    Object.keys(watchProgress).forEach(lessonId => {
-      const progress = watchProgress[lessonId]
-      const lesson = lessons.find(l => l.id === parseInt(lessonId))
+    Object.keys(watchProgress).forEach(compositeKey => {
+      const progress = watchProgress[compositeKey]
+      const lesson = currentLanguageLessons.find(l => l.composite_key === compositeKey)
       
       if (lesson && progress > 0) {
-        hasAnyProgress = true
-        
         // Prefer lessons that aren't completed but have progress
         if (!lesson.completed && progress > highestProgress) {
           highestProgress = progress
@@ -244,43 +340,81 @@ export const CourseProvider = ({ children }) => {
     
     // If no incomplete lesson with progress, find the first incomplete lesson
     if (!lastWatched) {
-      lastWatched = lessons.find(lesson => !lesson.completed)
+      const sortedLessons = currentLanguageLessons.sort((a, b) => {
+        if (a.module_id !== b.module_id) {
+          return a.module_id - b.module_id
+        }
+        return a.order - b.order
+      })
+      lastWatched = sortedLessons.find(lesson => !lesson.completed)
     }
     
     // If all lessons are completed, return the last lesson
-    if (!lastWatched) {
-      lastWatched = lessons[lessons.length - 1]
+    if (!lastWatched && currentLanguageLessons.length > 0) {
+      const sortedLessons = currentLanguageLessons.sort((a, b) => {
+        if (a.module_id !== b.module_id) {
+          return a.module_id - b.module_id
+        }
+        return a.order - b.order
+      })
+      lastWatched = sortedLessons[sortedLessons.length - 1]
     }
     
     // Final fallback to first lesson
-    return lastWatched || lessons[0]
+    return lastWatched || currentLanguageLessons[0]
   }
 
   const getCurrentOrNextLesson = () => {
-    // Find the lesson marked as current, or the first incomplete lesson
-    const currentLesson = lessons.find(lesson => lesson.current)
-    if (currentLesson) return currentLesson
+    const currentLanguageLessons = getLessonsForLanguage(currentLanguage)
     
-    const firstIncomplete = lessons.find(lesson => !lesson.completed)
-    return firstIncomplete || lessons[0]
+    if (currentLanguageLessons.length === 0) return null
+    
+    const sortedLessons = currentLanguageLessons.sort((a, b) => {
+      if (a.module_id !== b.module_id) {
+        return a.module_id - b.module_id
+      }
+      return a.order - b.order
+    })
+    
+    const firstIncomplete = sortedLessons.find(lesson => !lesson.completed)
+    return firstIncomplete || sortedLessons[0]
   }
 
   return (
     <CourseContext.Provider value={{
-      lessons,
+      // Filtered data for current language
+      lessons: getLessonsForLanguage(currentLanguage),
+      modules: getModulesForLanguage(currentLanguage),
+      
+      // Access to all data if needed
+      allLessons: lessons,
+      allModules: modules,
+      
+      // Current state
       currentLesson,
       watchProgress,
       courseProgress,
+      isLoading,
+      
+      // Actions
       setCurrentLesson,
       markLessonComplete,
       updateWatchProgress,
+      refreshProgress,
+      
+      // Utilities
+      findLessonByCompositeKey,
+      getNextLesson,
+      getPreviousLesson,
+      getLessonsForLanguage,
+      getModulesForLanguage,
+      
+      // Progress calculations
       getProgress,
       getTotalLessons,
       getCompletedLessons,
       getLastWatchedLesson,
-      getCurrentOrNextLesson,
-      refreshProgress,
-      isLoading
+      getCurrentOrNextLesson
     }}>
       {children}
     </CourseContext.Provider>

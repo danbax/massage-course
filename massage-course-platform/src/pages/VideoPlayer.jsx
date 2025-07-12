@@ -30,9 +30,18 @@ import {
 import toast from 'react-hot-toast'
 
 const VideoPlayer = () => {
-  const { lessonId } = useParams()
+  const { moduleId, lessonId } = useParams()
   const navigate = useNavigate()
-  const { lessons, currentLesson, setCurrentLesson, markLessonComplete, updateWatchProgress, watchProgress, isLoading: contextLoading } = useCourse()
+  const { 
+    findLessonByCompositeKey, 
+    getNextLesson, 
+    currentLesson, 
+    setCurrentLesson, 
+    markLessonComplete, 
+    updateWatchProgress, 
+    watchProgress, 
+    isLoading: contextLoading 
+  } = useCourse()
   const { t, currentLanguage } = useLanguage()
   
   const videoRef = useRef(null)
@@ -47,10 +56,18 @@ const VideoPlayer = () => {
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
 
-  const lesson = lessons.find(l => l.id === parseInt(lessonId))
+  // Find lesson using composite key (module_id, lesson_id, language)
+  const lesson = findLessonByCompositeKey(
+    parseInt(moduleId), 
+    parseInt(lessonId), 
+    currentLanguage
+  )
   
-  // Check if lesson has valid video URL (Cloudinary public ID or full URL)
+  // Check if lesson has valid video URL
   const hasValidVideo = lesson?.videoUrl && lesson.videoUrl !== null
+  
+  // Create composite key for progress tracking
+  const lessonCompositeKey = lesson ? `${lesson.module_id}-${lesson.id}-${lesson.language}` : null
   
   // Get Cloudinary thumbnail URL if available
   const thumbnailUrl = hasValidVideo ? getCloudinaryThumbnailUrl(extractPublicIdFromUrl(lesson.videoUrl)) : lesson?.thumbnail
@@ -72,15 +89,15 @@ const VideoPlayer = () => {
 
   useEffect(() => {
     return () => {
-      if (lesson) {
+      if (lesson && lessonCompositeKey) {
         const video = videoRef.current
         if (video && video.duration && video.currentTime > 0) {
           const currentProgress = (video.currentTime / video.duration) * 100
-          updateWatchProgress(lesson.id, currentProgress)
+          updateWatchProgress(lessonCompositeKey, currentProgress)
         }
       }
     }
-  }, [lesson?.id, updateWatchProgress])
+  }, [lesson, lessonCompositeKey, updateWatchProgress])
 
   // Handle video events through CloudinaryVideo component
   const handleLoadedMetadata = useCallback(() => {
@@ -92,15 +109,15 @@ const VideoPlayer = () => {
 
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current
-    if (!video || !video.duration) return
+    if (!video || !video.duration || !lessonCompositeKey) return
     
     const current = video.currentTime
     const progressPercent = (current / video.duration) * 100
     
     setCurrentTime(current)
     setProgress(progressPercent)
-    updateWatchProgress(lesson.id, progressPercent)
-  }, [lesson?.id, updateWatchProgress])
+    updateWatchProgress(lessonCompositeKey, progressPercent)
+  }, [lessonCompositeKey, updateWatchProgress])
 
   const handlePlay = useCallback(() => setIsPlaying(true), [])
   const handlePause = useCallback(() => setIsPlaying(false), [])
@@ -140,9 +157,9 @@ const VideoPlayer = () => {
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video || !lesson || !duration) return
+    if (!video || !lesson || !duration || !lessonCompositeKey) return
 
-    const savedProgress = watchProgress[lesson.id]
+    const savedProgress = watchProgress[lessonCompositeKey]
     if (savedProgress && savedProgress > 0) {
       const savedTime = (savedProgress / 100) * duration
       if (Math.abs(video.currentTime - savedTime) > 1) {
@@ -151,7 +168,7 @@ const VideoPlayer = () => {
         setProgress(savedProgress)
       }
     }
-  }, [lesson?.id, duration, watchProgress])
+  }, [lesson, lessonCompositeKey, duration, watchProgress])
 
   const togglePlay = () => {
     const video = videoRef.current
@@ -210,8 +227,10 @@ const VideoPlayer = () => {
   }
 
   const handleMarkComplete = () => {
+    if (!lessonCompositeKey) return
+    
     if (progress >= 80) {
-      markLessonComplete(lesson.id)
+      markLessonComplete(lessonCompositeKey)
       toast.success(t('video.lessonCompleted'))
     } else {
       toast.error(t('video.watchMoreToComplete'))
@@ -219,12 +238,21 @@ const VideoPlayer = () => {
   }
 
   const handleNextLesson = () => {
-    const currentIndex = lessons.findIndex(l => l.id === lesson.id)
-    const nextLesson = lessons[currentIndex + 1]
+    if (!lesson) return
+    
+    const nextLesson = getNextLesson(lesson.module_id, lesson.id, currentLanguage)
     
     if (nextLesson) {
-      navigate(`/app/video/${nextLesson.id}`)
+      navigate(`/app/video/${nextLesson.module_id}/${nextLesson.id}`)
     }
+  }
+
+  const handlePreviousLesson = () => {
+    // This can be implemented later if needed
+    // const previousLesson = getPreviousLesson(lesson.module_id, lesson.id, currentLanguage)
+    // if (previousLesson) {
+    //   navigate(`/app/video/${previousLesson.module_id}/${previousLesson.id}`)
+    // }
   }
 
   if (contextLoading) {
@@ -242,6 +270,9 @@ const VideoPlayer = () => {
       <Container maxW="6xl">
         <Box textAlign="center" py={20}>
           <Heading color="gray.500">{t('video.lessonNotFound')}</Heading>
+          <Text color="gray.500" mt={2}>
+            Module {moduleId}, Lesson {lessonId} in {currentLanguage}
+          </Text>
           <Button mt={4} onClick={() => navigate('/app/courses')}>
             {t('common.backToHome')}
           </Button>
@@ -506,7 +537,7 @@ const VideoPlayer = () => {
               <VStack align="start" flex={1} spacing={2}>
                 <HStack spacing={3}>
                   <Text fontSize="sm" color="blue.600" fontWeight="medium">
-                    {lesson.module}
+                    {lesson.module_title || `Module ${lesson.module_id}`}
                   </Text>
                   {lesson.completed && (
                     <Badge 
@@ -523,17 +554,17 @@ const VideoPlayer = () => {
                       </HStack>
                     </Badge>
                   )}
-                  {watchProgress[lesson.id] > 0 && !lesson.completed && (
+                  {lessonCompositeKey && watchProgress[lessonCompositeKey] > 0 && !lesson.completed && (
                     <Badge colorScheme="blue" variant="solid" fontSize="xs">
-                      {Math.round(watchProgress[lesson.id])}% {t('progress.lessonProgress.watched')}
+                      {Math.round(watchProgress[lessonCompositeKey])}% {t('progress.lessonProgress.watched')}
                     </Badge>
                   )}
                 </HStack>
                 <Heading size="lg" color="gray.900">
-                  {lesson.title[currentLanguage]}
+                  {lesson.title}
                 </Heading>
                 <Text color="gray.600" lineHeight="relaxed">
-                  {lesson.description[currentLanguage]}
+                  {lesson.description}
                 </Text>
               </VStack>
               
@@ -551,7 +582,7 @@ const VideoPlayer = () => {
                   rightIcon={<FaArrowRight />}
                   variant="outline"
                   onClick={handleNextLesson}
-                  isDisabled={!lessons[lessons.findIndex(l => l.id === lesson.id) + 1]}
+                  isDisabled={!getNextLesson(lesson.module_id, lesson.id, currentLanguage)}
                 >
                   {t('course.nextLesson')}
                 </Button>
