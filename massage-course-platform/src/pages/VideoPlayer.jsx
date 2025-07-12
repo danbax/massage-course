@@ -283,6 +283,7 @@ const VideoPlayer = () => {
                 thumbnail={thumbnailUrl}
                 poster={thumbnailUrl}
                 quality="standard"
+                controls={false}
                 onLoadedMetadata={handleLoadedMetadata}
                 onTimeUpdate={handleTimeUpdate}
                 onPlay={handlePlay}
@@ -299,28 +300,6 @@ const VideoPlayer = () => {
                   backgroundColor: '#000'
                 }}
               />
-              /*<CloudinaryVideo
-                ref={videoRef}
-                videoUrl={lesson.videoUrl}
-                thumbnail={thumbnailUrl}
-                poster={thumbnailUrl}
-                quality="standard"
-                onLoadedMetadata={handleLoadedMetadata}
-                onTimeUpdate={handleTimeUpdate}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onEnded={handleEnded}
-                onLoadStart={handleLoadStart}
-                onCanPlay={handleCanPlay}
-                onLoadedData={handleLoadedData}
-                onError={handleError}
-                style={{ 
-                  width: '100%',
-                  height: '500px',
-                  objectFit: 'cover',
-                  backgroundColor: '#000'
-                }}
-              />*/
             ) : (
               <Box
                 width="100%"
