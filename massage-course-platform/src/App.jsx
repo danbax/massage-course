@@ -22,6 +22,7 @@ import Progress from './pages/Progress'
 import Certificates from './pages/Certificates'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import CloudinaryTest from './pages/CloudinaryTest'
 import VideoRedirect from './components/VideoRedirect'
 
 // Create React Query client
@@ -98,6 +99,7 @@ const AppContent = () => {
               <Route path="certificates" element={<Certificates />} />
               <Route path="profile" element={<Profile />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="cloudinary-test" element={<CloudinaryTest />} />
             </Route>
           </Routes>
           <Toaster 

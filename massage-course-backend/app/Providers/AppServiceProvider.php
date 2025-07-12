@@ -11,7 +11,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Bind VideoServiceCloudinary as the default video service
+        $this->app->bind(\App\Services\VideoService::class, \App\Services\VideoServiceCloudinary::class);
     }
 
     /**

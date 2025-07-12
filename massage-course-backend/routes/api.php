@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\CloudinaryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -122,5 +123,13 @@ Route::middleware(['api_auth'])->group(function () {
         Route::get('/privacy', [SettingsController::class, 'privacy']);
         Route::put('/privacy', [SettingsController::class, 'updatePrivacy']);
         Route::get('/export', [SettingsController::class, 'exportData']);
+    });
+
+    Route::prefix('cloudinary')->group(function () {
+        Route::get('/test', [CloudinaryController::class, 'testConnection']);
+        Route::post('/upload', [CloudinaryController::class, 'uploadVideo']);
+        Route::get('/lessons/{lesson}/metadata', [CloudinaryController::class, 'getVideoMetadata']);
+        Route::delete('/lessons/{lesson}/video', [CloudinaryController::class, 'deleteVideo']);
+        Route::get('/lessons/{lesson}/urls', [CloudinaryController::class, 'generateVideoUrls']);
     });
 });

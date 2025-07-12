@@ -26,7 +26,11 @@ class LessonResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'content' => $this->content,
-            'video_url' => $this->when($this->canAccessVideo($user), $this->video_url),
+            'video_url' => $this->when($this->canAccessVideo($user), function() {
+                // If video_url is a Cloudinary public ID, return it as-is
+                // The frontend will handle generating URLs with transformations
+                return $this->video_url;
+            }),
             'video_duration_seconds' => $this->video_duration_seconds,
             'duration_minutes' => $this->duration_minutes,
             'formatted_duration' => $this->formatted_duration,

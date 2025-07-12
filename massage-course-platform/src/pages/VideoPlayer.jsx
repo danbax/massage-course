@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCourse } from '../hooks/useCourse'
 import { useLanguage } from '../hooks/useLanguage'
+import CloudinaryVideoNew from '../components/CloudinaryVideoNew'
+import { getCloudinaryThumbnailUrl, extractPublicIdFromUrl } from '../config/cloudinary'
 import {
   Box,
   Container,
@@ -47,7 +49,11 @@ const VideoPlayer = () => {
 
   const lesson = lessons.find(l => l.id === parseInt(lessonId))
   
+  // Check if lesson has valid video URL (Cloudinary public ID or full URL)
   const hasValidVideo = lesson?.videoUrl && lesson.videoUrl !== null
+  
+  // Get Cloudinary thumbnail URL if available
+  const thumbnailUrl = hasValidVideo ? getCloudinaryThumbnailUrl(extractPublicIdFromUrl(lesson.videoUrl)) : lesson?.thumbnail
 
   const handleMouseEnter = useCallback(() => {
     setShowControls(true)
@@ -76,92 +82,61 @@ const VideoPlayer = () => {
     }
   }, [lesson?.id, updateWatchProgress])
 
-  useEffect(() => {
+  // Handle video events through CloudinaryVideo component
+  const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current
-    if (!video || !lesson || !hasValidVideo) {
-      if (!hasValidVideo) {
-        setIsLoading(false)
-      }
-      return
-    }
-
-    setIsLoading(true)
-
-    const loadingTimeout = setTimeout(() => {
-      console.warn('Video loading timeout reached')
-      setIsLoading(false)
-    }, 10000)
-
-    const handleLoadedMetadata = () => {
+    if (video && video.duration) {
       setDuration(video.duration)
     }
+  }, [])
 
-    const handleTimeUpdate = () => {
-      if (!video.duration) return
-      
-      const current = video.currentTime
-      const progressPercent = (current / video.duration) * 100
-      
-      setCurrentTime(current)
-      setProgress(progressPercent)
-      updateWatchProgress(lesson.id, progressPercent)
-      
-      if (progressPercent >= 80 && progressPercent < 85) {
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current
+    if (!video || !video.duration) return
+    
+    const current = video.currentTime
+    const progressPercent = (current / video.duration) * 100
+    
+    setCurrentTime(current)
+    setProgress(progressPercent)
+    updateWatchProgress(lesson.id, progressPercent)
+  }, [lesson?.id, updateWatchProgress])
+
+  const handlePlay = useCallback(() => setIsPlaying(true), [])
+  const handlePause = useCallback(() => setIsPlaying(false), [])
+  
+  const handleEnded = useCallback(() => {
+    setIsPlaying(false)
+    const video = videoRef.current
+    if (video && video.duration) {
+      const currentProgress = (video.currentTime / video.duration) * 100
+      if (currentProgress >= 80) {
+        toast.success(t('video.videoCompleted'))
       }
     }
+  }, [t])
 
-    const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-    const handleEnded = () => {
-      setIsPlaying(false)
-      const video = videoRef.current
-      if (video && video.duration) {
-        const currentProgress = (video.currentTime / video.duration) * 100
-        if (currentProgress >= 80) {
-          toast.success(t('video.videoCompleted'))
-        }
-      }
-    }
+  const handleLoadStart = useCallback(() => setIsLoading(true), [])
+  
+  const handleCanPlay = useCallback(() => {
+    setIsLoading(false)
+  }, [])
+  
+  const handleLoadedData = useCallback(() => {
+    setIsLoading(false)
+  }, [])
 
-    const handleLoadStart = () => setIsLoading(true)
-    const handleCanPlay = () => {
-      clearTimeout(loadingTimeout)
+  const handleError = useCallback(() => {
+    setIsLoading(false)
+    toast.error(t('video.errorLoadingVideo'))
+  }, [t])
+
+  // Set loading to false for lessons without video
+  useEffect(() => {
+    if (!hasValidVideo) {
       setIsLoading(false)
     }
-    const handleLoadedData = () => {
-      clearTimeout(loadingTimeout)
-      setIsLoading(false)
-    }
-
-    const handleError = () => {
-      clearTimeout(loadingTimeout)
-      setIsLoading(false)
-      toast.error(t('video.errorLoadingVideo'))
-    }
-
-    video.addEventListener('loadedmetadata', handleLoadedMetadata)
-    video.addEventListener('timeupdate', handleTimeUpdate)
-    video.addEventListener('play', handlePlay)
-    video.addEventListener('pause', handlePause)
-    video.addEventListener('ended', handleEnded)
-    video.addEventListener('loadstart', handleLoadStart)
-    video.addEventListener('canplay', handleCanPlay)
-    video.addEventListener('loadeddata', handleLoadedData)
-    video.addEventListener('error', handleError)
-
-    return () => {
-      clearTimeout(loadingTimeout)
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
-      video.removeEventListener('timeupdate', handleTimeUpdate)
-      video.removeEventListener('play', handlePlay)
-      video.removeEventListener('pause', handlePause)
-      video.removeEventListener('ended', handleEnded)
-      video.removeEventListener('loadstart', handleLoadStart)
-      video.removeEventListener('canplay', handleCanPlay)
-      video.removeEventListener('loadeddata', handleLoadedData)
-      video.removeEventListener('error', handleError)
-    }
-  }, [lesson?.id, hasValidVideo, updateWatchProgress, t])
+  }, [hasValidVideo])
 
   useEffect(() => {
     const video = videoRef.current
@@ -302,24 +277,50 @@ const VideoPlayer = () => {
             onMouseLeave={handleMouseLeave}
           >
             {hasValidVideo ? (
-              <video
+              <CloudinaryVideoNew
                 ref={videoRef}
-                width="100%"
-                height="500px"
-                poster={lesson.thumbnail}
+                videoUrl={lesson.videoUrl}
+                thumbnail={thumbnailUrl}
+                poster={thumbnailUrl}
+                quality="standard"
+                onLoadedMetadata={handleLoadedMetadata}
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onEnded={handleEnded}
+                onLoadStart={handleLoadStart}
+                onCanPlay={handleCanPlay}
+                onLoadedData={handleLoadedData}
+                onError={handleError}
                 style={{ 
+                  width: '100%',
+                  height: '500px',
                   objectFit: 'cover',
                   backgroundColor: '#000'
                 }}
-                onError={(e) => {
-                  console.error('Video error:', e)
-                  toast.error(t('video.errorLoadingVideo'))
-                  setIsLoading(false)
+              />
+              /*<CloudinaryVideo
+                ref={videoRef}
+                videoUrl={lesson.videoUrl}
+                thumbnail={thumbnailUrl}
+                poster={thumbnailUrl}
+                quality="standard"
+                onLoadedMetadata={handleLoadedMetadata}
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onEnded={handleEnded}
+                onLoadStart={handleLoadStart}
+                onCanPlay={handleCanPlay}
+                onLoadedData={handleLoadedData}
+                onError={handleError}
+                style={{ 
+                  width: '100%',
+                  height: '500px',
+                  objectFit: 'cover',
+                  backgroundColor: '#000'
                 }}
-              >
-                <source src={lesson.videoUrl} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+              />*/
             ) : (
               <Box
                 width="100%"
