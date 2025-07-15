@@ -23,7 +23,8 @@ Route::prefix('auth')->group(function () {
 Route::get('certificates/verify/{code}', [CertificateController::class, 'verify'])
     ->name('certificates.verify');
 
-Route::post('webhooks/stripe', [PaymentController::class, 'handleWebhook']);
+Route::post('webhooks/invoice4u', [PaymentController::class, 'handleWebhook'])
+    ->name('api.webhooks.invoice4u');
 
 Route::get('health', function () {
     return response()->json([
@@ -38,8 +39,8 @@ Route::get('course', function () {
     return response()->json([
         'title' => 'Professional Relaxation Massage Therapy Course',
         'description' => 'Master professional massage therapy techniques from basic foundations to advanced business practices.',
-        'price' => 297.00,
-        'currency' => 'USD',
+        'price' => 50.00,
+        'currency' => 'ILS',
         'duration_hours' => 40,
         'difficulty_level' => 'beginner',
         'features' => [
@@ -111,7 +112,10 @@ Route::middleware(['api_auth'])->group(function () {
         Route::post('/intent', [PaymentController::class, 'createPaymentIntent']);
         Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
         Route::get('/access', [PaymentController::class, 'checkAccess']);
+        Route::get('/test-connection', [PaymentController::class, 'testConnection']);
         Route::get('/{payment}', [PaymentController::class, 'show']);
+        Route::get('/{payment}/status', [PaymentController::class, 'getPaymentStatus']);
+        Route::get('/{payment}/invoice/download', [PaymentController::class, 'downloadInvoice']);
         Route::post('/{payment}/refund', [PaymentController::class, 'requestRefund']);
     });
 

@@ -7,9 +7,7 @@ import {
   HStack,
   Input,
   Text,
-  Alert,
   Code,
-  Divider,
   FormControl,
   FormLabel
 } from '@chakra-ui/react'
@@ -109,7 +107,7 @@ const AuthTest = () => {
               </Button>
             </HStack>
 
-            <Divider />
+            <Box w="full" h="1px" bg="gray.200" my={4} />
 
             {mode === 'register' && (
               <FormControl>
@@ -154,7 +152,7 @@ const AuthTest = () => {
           </VStack>
         )}
 
-        <Divider />
+        <Box borderTop="1px" borderColor="gray.200" my={4} />
         
         <Box fontSize="sm" color="gray.600">
           <Text fontWeight="semibold">Authentication Status:</Text>

@@ -880,14 +880,18 @@ export const translations = {
 
   support: {
     contactSupport: 'Связаться с поддержкой',
-    supportDescription: 'Мы здесь, чтобы помочь! Свяжитесь с нашей службой поддержки.',
+    supportDescription: 'Мы здесь, чтобы помочь! Свяжитесь с нашей службой поддержки любым из способов ниже.',
+    whatsapp: 'WhatsApp',
+    email: 'Электронная почта',
+    address: 'Адрес',
+    addressValue: 'Нагария, Хазамир 88',
     fullName: 'Полное имя',
     fullNamePlaceholder: 'Введите ваше имя',
-    email: 'Электронная почта',
     emailPlaceholder: 'Введите ваш email',
     message: 'Сообщение',
     messagePlaceholder: 'Ваше сообщение...',
-    sendMessage: 'Отправить сообщение',
+    sendMessage: 'Отправьте нам сообщение',
+    sendMessageButton: 'Отправить сообщение',
     backToHome: '← Вернуться на главную'
   },
 

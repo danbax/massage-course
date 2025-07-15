@@ -880,14 +880,18 @@ export const translations = {
 
   support: {
     contactSupport: 'Зв\'язатися з підтримкою',
-    supportDescription: 'Ми тут, щоб допомогти! Зв\'яжіться з нашою командою підтримки.',
+    supportDescription: 'Ми тут, щоб допомогти! Зв\'яжіться з нашою командою підтримки будь-яким із способів нижче.',
+    whatsapp: 'WhatsApp',
+    email: 'Електронна пошта',
+    address: 'Адреса',
+    addressValue: 'Нагарія, Хазамір 88',
     fullName: "Повне ім'я",
     fullNamePlaceholder: "Введіть ваше ім'я",
-    email: 'Електронна пошта',
     emailPlaceholder: 'Введіть вашу електронну пошту',
     message: 'Повідомлення',
     messagePlaceholder: 'Ваше повідомлення...',
-    sendMessage: 'Надіслати повідомлення',
+    sendMessage: 'Надішліть нам повідомлення',
+    sendMessageButton: 'Надіслати повідомлення',
     backToHome: '← Повернутися на головну'
   },
 

@@ -44,7 +44,6 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
-      # Deploy with optimized settings
       - name: Deploy backend via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
         with:
@@ -54,7 +53,6 @@ jobs:
           protocol: ftp
           local-dir: massage-course-backend/
           server-dir: /home/${{ secrets.FTP_USERNAME }}/massage-course-backend/
-          # Optimization settings
           exclude: |
             **/public/**
             **/.git*
@@ -62,8 +60,6 @@ jobs:
             **/node_modules/**
             **/.DS_Store
             **/Thumbs.db
-          # Only upload changed files
-          state-name: .ftp-deploy-sync-backend-state.json
           dry-run: false
           log-level: minimal
 
@@ -76,7 +72,5 @@ jobs:
           protocol: ftp
           local-dir: massage-course-backend/public/
           server-dir: /home/${{ secrets.FTP_USERNAME }}/public_html/
-          # Only upload changed files
-          state-name: .ftp-deploy-sync-frontend-state.json
           dry-run: false
           log-level: minimal

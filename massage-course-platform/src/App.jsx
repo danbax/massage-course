@@ -19,7 +19,7 @@ import Dashboard from './pages/Dashboard'
 import Courses from './pages/Courses'
 import VideoPlayer from './pages/VideoPlayer'
 import Progress from './pages/Progress'
-import Certificates from './pages/Certificates'
+import Certificate from './pages/Certificate'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import CloudinaryTest from './pages/CloudinaryTest'
@@ -99,7 +99,7 @@ const AppContent = () => {
               {/* Legacy support for old URLs: /video/lessonId -> handled by VideoRedirect */}
               <Route path="video/:legacyLessonId" element={<VideoRedirect />} />
               <Route path="progress" element={<Progress />} />
-              <Route path="certificates" element={<Certificates />} />
+              <Route path="certificate" element={<Certificate />} />
               <Route path="profile" element={<Profile />} />
               <Route path="settings" element={<Settings />} />
               <Route path="cloudinary-test" element={<CloudinaryTest />} />

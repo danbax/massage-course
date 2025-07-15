@@ -103,6 +103,15 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user has completed at least one lesson for certificate eligibility.
+     */
+    public function hasCompletedAtLeastOneLesson(): bool
+    {
+        $progress = $this->progress;
+        return $progress && $progress->completed_lessons > 0;
+    }
+
+    /**
      * Get the user's course progress percentage.
      */
     public function getProgressPercentage(): float

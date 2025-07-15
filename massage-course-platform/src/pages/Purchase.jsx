@@ -18,7 +18,8 @@ import {
   Icon,
   Badge,
   Input,
-  SimpleGrid
+  SimpleGrid,
+  Spinner
 } from '@chakra-ui/react'
 import { 
   FaCheck,
@@ -30,27 +31,32 @@ import {
   FaShieldAlt,
   FaLock,
   FaCreditCard,
-  FaPaypal,
   FaStar,
   FaHeart,
-  FaGift
+  FaGift,
+  FaExternalLinkAlt,
+  FaFileInvoice
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 
 const Purchase = () => {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, user } = useAuth()
   const { t } = useLanguage()
   const [selectedPlan, setSelectedPlan] = useState('lifetime')
-  const [paymentMethod, setPaymentMethod] = useState('card')
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false)
+  const [paymentUrl, setPaymentUrl] = useState(null)
+  const [paymentId, setPaymentId] = useState(null)
   const [formData, setFormData] = useState({
-    email: '',
-    firstName: '',
-    lastName: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: ''
+    email: user?.email || '',
+    firstName: user?.name?.split(' ')[0] || '',
+    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+    phone: user?.phone || '',
+    city: user?.city || '',
+    address: user?.address || '',
+    postalCode: user?.postal_code || '',
+    taxId: user?.tax_id || ''
   })
 
   const handleInputChange = (e) => {
@@ -61,21 +67,148 @@ const Purchase = () => {
     }))
   }
 
-  const handlePurchase = async (e) => {
+  const handleRegisterAndPurchase = async (e) => {
     e.preventDefault()
     setIsLoading(true)
 
-    setTimeout(() => {
-      login({
-        name: `${formData.firstName} ${formData.lastName}`,
-        email: formData.email,
-        avatar: formData.firstName.charAt(0) + formData.lastName.charAt(0)
+    try {
+      let currentUser = user
+
+      if (!currentUser) {
+        const registerData = {
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          phone: formData.phone,
+          city: formData.city,
+          address: formData.address,
+          postal_code: formData.postalCode,
+          tax_id: formData.taxId,
+          password: Math.random().toString(36).slice(-8),
+          password_confirmation: ''
+        }
+        registerData.password_confirmation = registerData.password
+
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(registerData)
+        })
+
+        if (!response.ok) {
+          throw new Error('Registration failed')
+        }
+
+        const authData = await response.json()
+        login(authData.user)
+        currentUser = authData.user
+        toast.success('Account created successfully!')
+      }
+
+      const paymentResponse = await fetch('/api/payments/intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        }
       })
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json()
+        throw new Error(errorData.message || 'Payment initialization failed')
+      }
+
+      const paymentData = await paymentResponse.json()
       
-      toast.success(t('purchase.purchaseSuccess'))
-      navigate('/app/courses')
+      setPaymentUrl(paymentData.payment_url)
+      setPaymentId(paymentData.payment_id || paymentData.invoice_id)
+      
+      toast.success('Payment link created! Redirecting to Invoice4U...')
+      
+      setTimeout(() => {
+        window.open(paymentData.payment_url, '_blank')
+        setIsCheckingPayment(true)
+        startPaymentCheck(paymentData.payment_id || paymentData.invoice_id)
+      }, 1000)
+
+    } catch (error) {
+      console.error('Purchase process failed:', error)
+      toast.error(error.message || 'Purchase failed. Please try again.')
+    } finally {
       setIsLoading(false)
-    }, 2000)
+    }
+  }
+
+  const startPaymentCheck = (paymentId) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/payments/${paymentId}/status`, {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
+        })
+
+        if (!response.ok) return
+
+        const data = await response.json()
+        
+        if (data.status === 'succeeded') {
+          clearInterval(interval)
+          setIsCheckingPayment(false)
+          toast.success('Payment completed successfully!')
+          navigate('/app/courses')
+          return
+        }
+        
+        if (data.status === 'failed' || data.status === 'cancelled') {
+          clearInterval(interval)
+          setIsCheckingPayment(false)
+          toast.error('Payment was not completed. Please try again.')
+          setPaymentUrl(null)
+          setPaymentId(null)
+        }
+      } catch (error) {
+        console.error('Payment check failed:', error)
+      }
+    }, 5000)
+
+    setTimeout(() => {
+      clearInterval(interval)
+      setIsCheckingPayment(false)
+    }, 300000)
+  }
+
+  const handleManualCheck = async () => {
+    if (!paymentId) return
+    
+    setIsCheckingPayment(true)
+    try {
+      const response = await fetch(`/api/payments/${paymentId}/status`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
+
+      if (!response.ok) {
+        toast.error('Failed to check payment status')
+        return
+      }
+
+      const data = await response.json()
+      
+      if (data.status === 'succeeded') {
+        toast.success('Payment confirmed! Redirecting...')
+        navigate('/app/courses')
+        return
+      }
+      
+      toast.info(`Payment status: ${data.status}`)
+    } catch (error) {
+      toast.error('Failed to check payment status')
+    } finally {
+      setIsCheckingPayment(false)
+    }
   }
 
   const features = [
@@ -172,6 +305,49 @@ const Purchase = () => {
       </Box>
 
       <Container maxW="7xl" py={8}>
+        {paymentUrl && (
+          <Box 
+            status="info" 
+            mb={6} 
+            borderRadius="lg"
+            bg="blue.50"
+            border="1px solid"
+            borderColor="blue.200"
+            p={4}
+          >
+            <HStack spacing={3}>
+              <Icon as={FaFileInvoice} color="blue.500" />
+              <VStack align="start" spacing={2} flex={1}>
+                <Text fontWeight="600" color="blue.800">Payment Link Created</Text>
+                <Text fontSize="sm" color="blue.700">
+                  Click the button below to complete your payment with Invoice4U.
+                </Text>
+                <HStack spacing={3}>
+                  <Button
+                    as="a"
+                    href={paymentUrl}
+                    target="_blank"
+                    size="sm"
+                    colorScheme="blue"
+                    leftIcon={<FaExternalLinkAlt />}
+                  >
+                    Open Payment Link
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleManualCheck}
+                    isLoading={isCheckingPayment}
+                    leftIcon={<FaFileInvoice />}
+                  >
+                    Check Payment Status
+                  </Button>
+                </HStack>
+              </VStack>
+            </HStack>
+          </Box>
+        )}
+
         <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={12}>
           <VStack spacing={8} align="stretch">
             <motion.div
@@ -305,7 +481,7 @@ const Purchase = () => {
                     <Heading size="lg" color="gray.900">{t('purchase.choosePlan')}</Heading>
                   </VStack>
 
-                    <VStack spacing={3}>
+                  <VStack spacing={3}>
                     {plans.map((plan) => (
                       <Box
                         key={plan.id}
@@ -374,7 +550,7 @@ const Purchase = () => {
                             </HStack>
                           </VStack>
                           <Text fontSize="sm" color="green.600" fontWeight="600">
-                            {t('purchase.save', { amount: plan.originalPrice - plan.price })}
+                            Save ${plan.originalPrice - plan.price}
                           </Text>
                         </HStack>
                         
@@ -392,11 +568,11 @@ const Purchase = () => {
 
                   <Box h="1px" bg="gray.200" w="full" my={2} />
 
-                  <form onSubmit={handlePurchase}>
+                  <form onSubmit={handleRegisterAndPurchase}>
                     <VStack spacing={4}>
                       <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
                         <VStack align="start" spacing={2}>
-                          <Text fontSize="sm" fontWeight="medium">{t('purchase.firstName')} *</Text>
+                          <Text fontSize="sm" fontWeight="medium">First Name *</Text>
                           <Input
                             name="firstName"
                             value={formData.firstName}
@@ -407,7 +583,7 @@ const Purchase = () => {
                           />
                         </VStack>
                         <VStack align="start" spacing={2}>
-                          <Text fontSize="sm" fontWeight="medium">{t('purchase.lastName')} *</Text>
+                          <Text fontSize="sm" fontWeight="medium">Last Name *</Text>
                           <Input
                             name="lastName"
                             value={formData.lastName}
@@ -420,7 +596,7 @@ const Purchase = () => {
                       </Grid>
 
                       <VStack align="start" spacing={2} w="full">
-                        <Text fontSize="sm" fontWeight="medium">{t('common.email')} *</Text>
+                        <Text fontSize="sm" fontWeight="medium">Email *</Text>
                         <Input
                           name="email"
                           type="email"
@@ -432,125 +608,66 @@ const Purchase = () => {
                         />
                       </VStack>
 
-                      <VStack align="start" spacing={3} w="full">
-                        <Text fontSize="sm" fontWeight="medium">{t('purchase.paymentMethod')}</Text>
-                        <VStack spacing={2}>
-                          <HStack 
-                            w="full" 
-                            p={3} 
-                            borderRadius="lg" 
-                            border="2px solid" 
-                            borderColor={paymentMethod === 'card' ? 'blue.400' : 'gray.200'}
-                            bg={paymentMethod === 'card' ? 'blue.50' : 'white'}
-                            cursor="pointer"
-                            onClick={() => setPaymentMethod('card')}
-                          >
-                            <Box
-                              w={4}
-                              h={4}
-                              borderRadius="full"
-                              border="2px solid"
-                              borderColor={paymentMethod === 'card' ? "blue.500" : "gray.300"}
-                              bg={paymentMethod === 'card' ? "blue.500" : "white"}
-                              position="relative"
-                            >
-                              {paymentMethod === 'card' && (
-                                <Box
-                                  w={2}
-                                  h={2}
-                                  borderRadius="full"
-                                  bg="white"
-                                  position="absolute"
-                                  top="50%"
-                                  left="50%"
-                                  transform="translate(-50%, -50%)"
-                                />
-                              )}
-                            </Box>
-                            <Icon as={FaCreditCard} />
-                            <Text>{t('purchase.creditCard')}</Text>
-                          </HStack>
-                          <HStack 
-                            w="full" 
-                            p={3} 
-                            borderRadius="lg" 
-                            border="2px solid" 
-                            borderColor={paymentMethod === 'paypal' ? 'blue.400' : 'gray.200'}
-                            bg={paymentMethod === 'paypal' ? 'blue.50' : 'white'}
-                            cursor="pointer"
-                            onClick={() => setPaymentMethod('paypal')}
-                          >
-                            <Box
-                              w={4}
-                              h={4}
-                              borderRadius="full"
-                              border="2px solid"
-                              borderColor={paymentMethod === 'paypal' ? "blue.500" : "gray.300"}
-                              bg={paymentMethod === 'paypal' ? "blue.500" : "white"}
-                              position="relative"
-                            >
-                              {paymentMethod === 'paypal' && (
-                                <Box
-                                  w={2}
-                                  h={2}
-                                  borderRadius="full"
-                                  bg="white"
-                                  position="absolute"
-                                  top="50%"
-                                  left="50%"
-                                  transform="translate(-50%, -50%)"
-                                />
-                              )}
-                            </Box>
-                            <Icon as={FaPaypal} color="blue.500" />
-                            <Text>{t('purchase.paypal')}</Text>
-                          </HStack>
-                        </VStack>
+                      <VStack align="start" spacing={2} w="full">
+                        <Text fontSize="sm" fontWeight="medium">Phone</Text>
+                        <Input
+                          name="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          placeholder="+972-50-123-4567"
+                          borderRadius="lg"
+                        />
                       </VStack>
 
-                      {paymentMethod === 'card' && (
-                        <VStack spacing={3} w="full">
-                          <VStack align="start" spacing={2} w="full">
-                            <Text fontSize="sm" fontWeight="medium">{t('purchase.cardNumber')} *</Text>
-                            <Input
-                              name="cardNumber"
-                              value={formData.cardNumber}
-                              onChange={handleInputChange}
-                              placeholder="1234 5678 9012 3456"
-                              required
-                              borderRadius="lg"
-                            />
-                          </VStack>
-                          <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
-                            <VStack align="start" spacing={2}>
-                              <Text fontSize="sm" fontWeight="medium">{t('purchase.expiryDate')} *</Text>
-                              <Input
-                                name="expiryDate"
-                                value={formData.expiryDate}
-                                onChange={handleInputChange}
-                                placeholder="MM/YY"
-                                required
-                                borderRadius="lg"
-                              />
-                            </VStack>
-                            <VStack align="start" spacing={2}>
-                              <Text fontSize="sm" fontWeight="medium">{t('purchase.cvv')} *</Text>
-                              <Input
-                                name="cvv"
-                                value={formData.cvv}
-                                onChange={handleInputChange}
-                                placeholder="123"
-                                required
-                                borderRadius="lg"
-                              />
-                            </VStack>
-                          </Grid>
+                      <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
+                        <VStack align="start" spacing={2}>
+                          <Text fontSize="sm" fontWeight="medium">City</Text>
+                          <Input
+                            name="city"
+                            value={formData.city}
+                            onChange={handleInputChange}
+                            placeholder="Tel Aviv"
+                            borderRadius="lg"
+                          />
                         </VStack>
-                      )}
+                        <VStack align="start" spacing={2}>
+                          <Text fontSize="sm" fontWeight="medium">Postal Code</Text>
+                          <Input
+                            name="postalCode"
+                            value={formData.postalCode}
+                            onChange={handleInputChange}
+                            placeholder="12345"
+                            borderRadius="lg"
+                          />
+                        </VStack>
+                      </Grid>
+
+                      <VStack align="start" spacing={2} w="full">
+                        <Text fontSize="sm" fontWeight="medium">Address</Text>
+                        <Input
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          placeholder="123 Main Street"
+                          borderRadius="lg"
+                        />
+                      </VStack>
+
+                      <VStack align="start" spacing={2} w="full">
+                        <Text fontSize="sm" fontWeight="medium">Tax ID (Optional)</Text>
+                        <Input
+                          name="taxId"
+                          value={formData.taxId}
+                          onChange={handleInputChange}
+                          placeholder="Israeli tax ID"
+                          borderRadius="lg"
+                        />
+                      </VStack>
 
                       <Box w="full" p={4} bg="gray.50" borderRadius="lg">
                         <HStack justify="space-between" mb={2}>
-                          <Text>{t('purchase.coursePrice')}:</Text>
+                          <Text>Course Price:</Text>
                           <HStack>
                             <Text textDecoration="line-through" color="gray.500">
                               ${plans.find(p => p.id === selectedPlan)?.originalPrice}
@@ -561,7 +678,7 @@ const Purchase = () => {
                           </HStack>
                         </HStack>
                         <HStack justify="space-between" fontSize="lg" fontWeight="700">
-                          <Text>{t('purchase.total')}:</Text>
+                          <Text>Total:</Text>
                           <Text color="green.600">
                             ${plans.find(p => p.id === selectedPlan)?.price}
                           </Text>
@@ -579,19 +696,19 @@ const Purchase = () => {
                         fontWeight="600"
                         borderRadius="xl"
                         isLoading={isLoading}
-                        loadingText={t('purchase.processing')}
-                        leftIcon={<Icon as={FaShieldAlt} />}
+                        loadingText="Creating Payment..."
+                        leftIcon={<Icon as={FaFileInvoice} />}
                         _hover={{
                           transform: 'translateY(-2px)',
                           boxShadow: 'xl'
                         }}
                       >
-                        {t('purchase.completePurchase')}
+                        {user ? 'Purchase Course' : 'Register & Purchase'}
                       </Button>
 
                       <HStack spacing={2} justify="center" fontSize="xs" color="gray.500">
                         <Icon as={FaLock} />
-                        <Text>{t('purchase.securePayment')}</Text>
+                        <Text>Secure payment via Invoice4U</Text>
                       </HStack>
                     </VStack>
                   </form>

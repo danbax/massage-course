@@ -13,39 +13,33 @@ use Illuminate\Support\Facades\DB;
 class CertificateService
 {
     /**
-     * Generate certificate for a user who completed a course.
+     * Generate certificate for a user who completed at least one lesson.
      */
-    public function generateCertificate(User $user, Course $course): UserCertificate
+    public function generateCertificate(User $user): UserCertificate
     {
-        // Get certificate template for the course
-        $template = Certificate::where('course_id', $course->id)
-            ->where('is_active', true)
-            ->first();
-
-        if (!$template) {
-            // Create default template if none exists
-            $template = $this->createDefaultTemplate($course);
-        }
-
+        // For the massage course, we'll create a certificate without a specific course reference
         // Generate unique certificate number and verification code
         $certificateNumber = UserCertificate::generateCertificateNumber();
         $verificationCode = UserCertificate::generateVerificationCode();
 
-        // Create certificate record
+        // Create certificate record (without course_id for now)
         $userCertificate = UserCertificate::create([
             'user_id' => $user->id,
-            'certificate_id' => $template->id,
-            'course_id' => $course->id,
+            'certificate_id' => null, // We'll create the template on the fly
             'certificate_number' => $certificateNumber,
             'verification_code' => $verificationCode,
             'issued_at' => now()
         ]);
 
-        // Generate PDF
-        $pdfPath = $this->generateCertificatePdf($userCertificate);
-        $userCertificate->update(['file_path' => $pdfPath]);
-
         return $userCertificate;
+    }
+
+    /**
+     * Generate certificate for a user who completed a course (legacy method).
+     */
+    public function generateCertificateForCourse(User $user): UserCertificate
+    {
+        return $this->generateCertificate($user);
     }
 
     /**

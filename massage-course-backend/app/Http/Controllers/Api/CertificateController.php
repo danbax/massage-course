@@ -55,18 +55,16 @@ class CertificateController extends Controller
     /**
      * Download certificate PDF.
      */
-    public function download(UserCertificate $certificate, Request $request): Response
+    public function download(UserCertificate $certificate, Request $request): JsonResponse
     {
         $this->authorize('download', $certificate);
 
-        $pdfPath = $this->certificateService->getCertificatePath($certificate);
-        
-        if (!file_exists($pdfPath)) {
-            // Regenerate certificate if file doesn't exist
-            $pdfPath = $this->certificateService->generateCertificatePdf($certificate);
-        }
-
-        return response()->download($pdfPath, "certificate-{$certificate->certificate_number}.pdf");
+        // For now, return a simple response indicating PDF generation is not implemented
+        // The frontend will handle PDF generation using jsPDF
+        return response()->json([
+            'message' => 'PDF generation handled by frontend',
+            'certificate' => new CertificateResource($certificate)
+        ]);
     }
 
     /**
@@ -76,10 +74,10 @@ class CertificateController extends Controller
     {
         $user = $request->user();
 
-        // Check if user has completed the course
-        if (!$user->hasCompletedCourse()) {
+        // Check if user has completed at least one lesson
+        if (!$user->hasCompletedAtLeastOneLesson()) {
             return response()->json([
-                'message' => 'Course must be completed before generating certificate'
+                'message' => 'At least one lesson must be completed before generating certificate'
             ], 400);
         }
 
@@ -138,12 +136,12 @@ class CertificateController extends Controller
     {
         $user = $request->user();
         
-        $hasCompleted = $user->hasCompletedCourse();
+        $hasCompleted = $user->hasCompletedAtLeastOneLesson();
         $hasExisting = $user->certificates()->exists();
         
         return response()->json([
             'eligible' => $hasCompleted && !$hasExisting,
-            'completed_course' => $hasCompleted,
+            'completed_lesson' => $hasCompleted,
             'has_certificate' => $hasExisting,
             'message' => $this->getEligibilityMessage($hasCompleted, $hasExisting)
         ]);
@@ -159,7 +157,7 @@ class CertificateController extends Controller
         }
         
         if (!$hasCompleted) {
-            return 'Complete all lessons to earn your certificate';
+            return 'Complete at least one lesson to earn your certificate';
         }
         
         return 'Eligible for certificate generation';

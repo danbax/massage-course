@@ -40,7 +40,7 @@ export const translations = {
     home: 'Home',
     courses: 'Courses',
     progress: 'Progress',
-    certificates: 'Certificates',
+    certificate: 'Certificate',
     dashboard: 'Dashboard',
     videoPlayer: 'Video Player',
     profile: 'Profile',
@@ -315,11 +315,11 @@ export const translations = {
   },
 
   certificates: {
-    title: 'Your Certificates',
-    subtitle: 'Download and share your professional massage therapy certificates',
+    title: 'Your Certificate',
+    subtitle: 'Download your professional massage therapy certificate',
     showcaseAchievements: 'Showcase your achievements and professional credentials',
-    noCertificates: 'No Certificates Yet',
-    noCertificatesDesc: 'Complete the course to earn your professional massage therapy certificate. Your achievements will appear here once you finish all modules.',
+    noCertificate: 'No Certificate Yet',
+    noCertificateDesc: 'Complete at least one lesson to earn your professional massage therapy certificate.',
     generateCertificate: 'Generate Certificate',
     generating: 'Generating...',
     downloadPdf: 'Download PDF',
@@ -334,26 +334,17 @@ export const translations = {
     verified: 'Verified',
     issuedOn: 'Issued {date}',
     downloadCertificate: 'Download Certificate',
+    locked: 'Locked',
     achievements: {
       title: 'Achievement Progress',
       certificatesEarned: 'Certificates Earned',
       lessonsCompleted: 'Lessons Completed',
       courseProgress: 'Course Progress'
     },
-    types: {
-      swedishMassage: 'Swedish Massage Specialist',
-      swedishDesc: 'Completed basic Swedish massage techniques',
-      deepTissue: 'Deep Tissue Expert',
-      deepTissueDesc: 'Mastered advanced deep tissue techniques',
-      masterTherapist: 'Master Therapist',
-      masterDesc: 'Completed the entire professional course'
-    },
     requirements: {
-      complete2Lessons: 'Complete first 2 lessons',
-      complete4Lessons: 'Complete first 4 lessons',
+      complete1Lesson: 'Complete at least 1 lesson',
       completeAllLessons: 'Complete all lessons'
-    },
-    locked: 'Locked'
+    }
   },
 
   profile: {
@@ -880,14 +871,18 @@ export const translations = {
 
   support: {
     contactSupport: 'Contact Support',
-    supportDescription: 'We\'re here to help! Get in touch with our support team.',
+    supportDescription: 'We\'re here to help! Get in touch with our support team through any of the methods below.',
+    whatsapp: 'WhatsApp',
+    email: 'Email',
+    address: 'Address',
+    addressValue: 'Nahariya, Hazamir 88',
     fullName: 'Full Name',
     fullNamePlaceholder: 'Enter your name',
-    email: 'Email',
     emailPlaceholder: 'Enter your email',
     message: 'Message',
     messagePlaceholder: 'Your message...',
-    sendMessage: 'Send Message',
+    sendMessage: 'Send us a message',
+    sendMessageButton: 'Send Message',
     backToHome: '← Back to Home'
   },
 

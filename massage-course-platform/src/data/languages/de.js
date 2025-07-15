@@ -880,14 +880,18 @@ export const translations = {
 
   support: {
     contactSupport: 'Support kontaktieren',
-    supportDescription: 'Wir sind hier, um zu helfen! Nehmen Sie Kontakt mit unserem Support-Team auf.',
+    supportDescription: 'Wir sind hier, um zu helfen! Nehmen Sie über eine der unten stehenden Methoden Kontakt mit unserem Support-Team auf.',
+    whatsapp: 'WhatsApp',
+    email: 'E-Mail',
+    address: 'Adresse',
+    addressValue: 'Nahariya, Hazamir 88',
     fullName: 'Vollständiger Name',
     fullNamePlaceholder: 'Geben Sie Ihren Namen ein',
-    email: 'E-Mail',
     emailPlaceholder: 'Geben Sie Ihre E-Mail-Adresse ein',
     message: 'Nachricht',
     messagePlaceholder: 'Ihre Nachricht...',
-    sendMessage: 'Nachricht senden',
+    sendMessage: 'Senden Sie uns eine Nachricht',
+    sendMessageButton: 'Nachricht senden',
     backToHome: '← Zurück zur Startseite'
   },
 

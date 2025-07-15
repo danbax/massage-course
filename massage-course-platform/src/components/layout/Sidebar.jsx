@@ -35,7 +35,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
     { name: 'Courses', href: '/app/courses', icon: FaPlayCircle },
     { name: 'Video', href: '/app/video', icon: FaVideo },
     { name: 'Progress', href: '/app/progress', icon: FaChartLine },
-    { name: 'Certificates', href: '/app/certificates', icon: FaCertificate },
+    { name: 'Certificate', href: '/app/certificate', icon: FaCertificate },
     { name: 'Profile', href: '/app/profile', icon: FaUser },
     { name: 'Settings', href: '/app/settings', icon: FaCog },
   ]
