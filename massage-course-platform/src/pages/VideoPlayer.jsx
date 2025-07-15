@@ -3,8 +3,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCourse } from '../hooks/useCourse'
 import { useLanguage } from '../hooks/useLanguage'
-import CloudinaryVideoNew from '../components/CloudinaryVideoNew'
-import { getCloudinaryThumbnailUrl, extractPublicIdFromUrl } from '../config/cloudinary'
 import {
   Box,
   Container,
@@ -55,22 +53,16 @@ const VideoPlayer = () => {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
+  const [videoError, setVideoError] = useState(false)
 
-  // Find lesson using composite key (module_id, lesson_id, language)
   const lesson = findLessonByCompositeKey(
     parseInt(moduleId), 
     parseInt(lessonId), 
     currentLanguage
   )
   
-  // Check if lesson has valid video URL
-  const hasValidVideo = lesson?.videoUrl && lesson.videoUrl !== null
-  
-  // Create composite key for progress tracking
+  const hasValidVideo = lesson?.video_url && lesson.video_url !== null
   const lessonCompositeKey = lesson ? `${lesson.module_id}-${lesson.id}-${lesson.language}` : null
-  
-  // Get Cloudinary thumbnail URL if available
-  const thumbnailUrl = hasValidVideo ? getCloudinaryThumbnailUrl(extractPublicIdFromUrl(lesson.videoUrl)) : lesson?.thumbnail
 
   const handleMouseEnter = useCallback(() => {
     setShowControls(true)
@@ -81,30 +73,31 @@ const VideoPlayer = () => {
   }, [isPlaying])
 
   useEffect(() => {
-    if (lesson) {
-      setCurrentLesson(lesson)
-      setIsLoading(true)
-    }
+    if (!lesson) return
+    
+    setCurrentLesson(lesson)
+    setIsLoading(true)
+    setVideoError(false)
   }, [lesson, setCurrentLesson])
 
   useEffect(() => {
     return () => {
-      if (lesson && lessonCompositeKey) {
-        const video = videoRef.current
-        if (video && video.duration && video.currentTime > 0) {
-          const currentProgress = (video.currentTime / video.duration) * 100
-          updateWatchProgress(lessonCompositeKey, currentProgress)
-        }
-      }
+      if (!lesson || !lessonCompositeKey) return
+      
+      const video = videoRef.current
+      if (!video || !video.duration || video.currentTime <= 0) return
+      
+      const currentProgress = (video.currentTime / video.duration) * 100
+      updateWatchProgress(lessonCompositeKey, currentProgress)
     }
   }, [lesson, lessonCompositeKey, updateWatchProgress])
 
-  // Handle video events through CloudinaryVideo component
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current
-    if (video && video.duration) {
-      setDuration(video.duration)
-    }
+    if (!video || !video.duration) return
+    
+    setDuration(video.duration)
+    setVideoError(false)
   }, [])
 
   const handleTimeUpdate = useCallback(() => {
@@ -125,30 +118,36 @@ const VideoPlayer = () => {
   const handleEnded = useCallback(() => {
     setIsPlaying(false)
     const video = videoRef.current
-    if (video && video.duration) {
-      const currentProgress = (video.currentTime / video.duration) * 100
-      if (currentProgress >= 80) {
-        toast.success(t('video.videoCompleted'))
-      }
+    if (!video || !video.duration) return
+    
+    const currentProgress = (video.currentTime / video.duration) * 100
+    if (currentProgress >= 80) {
+      toast.success(t('video.videoCompleted'))
     }
   }, [t])
 
-  const handleLoadStart = useCallback(() => setIsLoading(true), [])
+  const handleLoadStart = useCallback(() => {
+    setIsLoading(true)
+    setVideoError(false)
+  }, [])
   
   const handleCanPlay = useCallback(() => {
     setIsLoading(false)
+    setVideoError(false)
   }, [])
   
   const handleLoadedData = useCallback(() => {
     setIsLoading(false)
+    setVideoError(false)
   }, [])
 
-  const handleError = useCallback(() => {
+  const handleError = useCallback((e) => {
+    console.error('Video error:', e)
     setIsLoading(false)
+    setVideoError(true)
     toast.error(t('video.errorLoadingVideo'))
   }, [t])
 
-  // Set loading to false for lessons without video
   useEffect(() => {
     if (!hasValidVideo) {
       setIsLoading(false)
@@ -160,14 +159,14 @@ const VideoPlayer = () => {
     if (!video || !lesson || !duration || !lessonCompositeKey) return
 
     const savedProgress = watchProgress[lessonCompositeKey]
-    if (savedProgress && savedProgress > 0) {
-      const savedTime = (savedProgress / 100) * duration
-      if (Math.abs(video.currentTime - savedTime) > 1) {
-        video.currentTime = savedTime
-        setCurrentTime(savedTime)
-        setProgress(savedProgress)
-      }
-    }
+    if (!savedProgress || savedProgress <= 0) return
+    
+    const savedTime = (savedProgress / 100) * duration
+    if (Math.abs(video.currentTime - savedTime) <= 1) return
+    
+    video.currentTime = savedTime
+    setCurrentTime(savedTime)
+    setProgress(savedProgress)
   }, [lesson, lessonCompositeKey, duration, watchProgress])
 
   const togglePlay = () => {
@@ -176,12 +175,13 @@ const VideoPlayer = () => {
 
     if (isPlaying) {
       video.pause()
-    } else {
-      video.play().catch(error => {
-        console.error('Error playing video:', error)
-        toast.error(t('video.unableToPlay'))
-      })
+      return
     }
+    
+    video.play().catch(error => {
+      console.error('Error playing video:', error)
+      toast.error(t('video.unableToPlay'))
+    })
   }
 
   const handleSeek = (value) => {
@@ -211,12 +211,14 @@ const VideoPlayer = () => {
       if (container.requestFullscreen) {
         container.requestFullscreen()
       }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-      }
+      setIsFullscreen(true)
+      return
     }
-    setIsFullscreen(!isFullscreen)
+    
+    if (document.exitFullscreen) {
+      document.exitFullscreen()
+    }
+    setIsFullscreen(false)
   }
 
   const formatTime = (seconds) => {
@@ -232,9 +234,10 @@ const VideoPlayer = () => {
     if (progress >= 80) {
       markLessonComplete(lessonCompositeKey)
       toast.success(t('video.lessonCompleted'))
-    } else {
-      toast.error(t('video.watchMoreToComplete'))
+      return
     }
+    
+    toast.error(t('video.watchMoreToComplete'))
   }
 
   const handleNextLesson = () => {
@@ -245,14 +248,6 @@ const VideoPlayer = () => {
     if (nextLesson) {
       navigate(`/app/video/${nextLesson.module_id}/${nextLesson.id}`)
     }
-  }
-
-  const handlePreviousLesson = () => {
-    // This can be implemented later if needed
-    // const previousLesson = getPreviousLesson(lesson.module_id, lesson.id, currentLanguage)
-    // if (previousLesson) {
-    //   navigate(`/app/video/${previousLesson.module_id}/${previousLesson.id}`)
-    // }
   }
 
   if (contextLoading) {
@@ -307,13 +302,11 @@ const VideoPlayer = () => {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            {hasValidVideo ? (
-              <CloudinaryVideoNew
+            {hasValidVideo && !videoError ? (
+              <video
                 ref={videoRef}
-                videoUrl={lesson.videoUrl}
-                thumbnail={thumbnailUrl}
-                poster={thumbnailUrl}
-                quality="standard"
+                src={lesson.video_url}
+                poster={lesson.thumbnail}
                 controls={false}
                 onLoadedMetadata={handleLoadedMetadata}
                 onTimeUpdate={handleTimeUpdate}
@@ -328,8 +321,11 @@ const VideoPlayer = () => {
                   width: '100%',
                   height: '500px',
                   objectFit: 'cover',
-                  backgroundColor: '#000'
+                  backgroundColor: '#000',
+                  display: 'block'
                 }}
+                preload="metadata"
+                playsInline
               />
             ) : (
               <Box
@@ -355,16 +351,19 @@ const VideoPlayer = () => {
                 </Box>
                 <VStack spacing={2}>
                   <Text fontSize="lg" fontWeight="medium" color="gray.600">
-                    {t('video.videoNotAvailable')}
+                    {videoError ? t('video.errorLoadingVideo') : t('video.videoNotAvailable')}
                   </Text>
                   <Text fontSize="sm" color="gray.500" textAlign="center">
-                    {t('video.videoNotAvailableDesc')}
+                    {videoError 
+                      ? 'Please check the video URL and try again'
+                      : t('video.videoNotAvailableDesc')
+                    }
                   </Text>
                 </VStack>
               </Box>
             )}
 
-            {isLoading && hasValidVideo && (
+            {isLoading && hasValidVideo && !videoError && (
               <Box
                 position="absolute"
                 top="0"
@@ -385,7 +384,7 @@ const VideoPlayer = () => {
               </Box>
             )}
 
-            {!isPlaying && !isLoading && hasValidVideo && (
+            {!isPlaying && !isLoading && hasValidVideo && !videoError && (
               <Box
                 position="absolute"
                 top="0"
@@ -423,105 +422,107 @@ const VideoPlayer = () => {
               </Box>
             )}
 
-            <Box
-              position="absolute"
-              bottom={0}
-              left={0}
-              right={0}
-              bg="linear-gradient(transparent, rgba(0, 0, 0, 0.7))"
-              color="white"
-              p={4}
-              opacity={showControls ? 1 : 0}
-              transition="opacity 0.3s"
-              zIndex={998}
-              pointerEvents={showControls ? "all" : "none"}
-            >
-              <VStack spacing={3}>
-                <Box w="full">
-                  <Box
-                    bg="whiteAlpha.300"
-                    h="2"
-                    borderRadius="full"
-                    cursor="pointer"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const clickX = e.clientX - rect.left
-                      const percentage = (clickX / rect.width) * 100
-                      handleSeek(percentage)
-                    }}
-                  >
+            {hasValidVideo && !videoError && (
+              <Box
+                position="absolute"
+                bottom={0}
+                left={0}
+                right={0}
+                bg="linear-gradient(transparent, rgba(0, 0, 0, 0.7))"
+                color="white"
+                p={4}
+                opacity={showControls ? 1 : 0}
+                transition="opacity 0.3s"
+                zIndex={998}
+                pointerEvents={showControls ? "all" : "none"}
+              >
+                <VStack spacing={3}>
+                  <Box w="full">
                     <Box
-                      bg="blue.400"
-                      h="full"
+                      bg="whiteAlpha.300"
+                      h="2"
                       borderRadius="full"
-                      width={`${progress}%`}
-                      transition="width 0.1s"
-                    />
-                  </Box>
-                </Box>
-
-                <HStack spacing={4} w="full" justify="space-between">
-                  <HStack spacing={3}>
-                    <Button
-                      onClick={togglePlay}
-                      variant="ghost"
-                      color="white"
-                      size="sm"
-                      _hover={{ bg: "whiteAlpha.200" }}
-                      aria-label={isPlaying ? t('video.controls.pause') : t('video.controls.play')}
-                      minW="auto"
-                      p={2}
+                      cursor="pointer"
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const clickX = e.clientX - rect.left
+                        const percentage = (clickX / rect.width) * 100
+                        handleSeek(percentage)
+                      }}
                     >
-                      <Icon as={isPlaying ? FaPause : FaPlay} />
-                    </Button>
-
-                    <Text fontSize="sm" minW="100px">
-                      {formatTime(currentTime)} / {formatTime(duration)}
-                    </Text>
-                  </HStack>
-
-                  <HStack spacing={3}>
-                    <HStack spacing={2} w="100px">
-                      <Icon as={FaVolumeUp} w={4} h={4} />
                       <Box
-                        bg="whiteAlpha.300"
-                        h="1"
+                        bg="blue.400"
+                        h="full"
                         borderRadius="full"
-                        cursor="pointer"
-                        flex="1"
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect()
-                          const clickX = e.clientX - rect.left
-                          const percentage = (clickX / rect.width) * 100
-                          handleVolumeChange(percentage)
-                        }}
+                        width={`${progress}%`}
+                        transition="width 0.1s"
+                      />
+                    </Box>
+                  </Box>
+
+                  <HStack spacing={4} w="full" justify="space-between">
+                    <HStack spacing={3}>
+                      <Button
+                        onClick={togglePlay}
+                        variant="ghost"
+                        color="white"
+                        size="sm"
+                        _hover={{ bg: "whiteAlpha.200" }}
+                        aria-label={isPlaying ? t('video.controls.pause') : t('video.controls.play')}
+                        minW="auto"
+                        p={2}
                       >
-                        <Box
-                          bg="white"
-                          h="full"
-                          borderRadius="full"
-                          width={`${volume * 100}%`}
-                          transition="width 0.1s"
-                        />
-                      </Box>
+                        <Icon as={isPlaying ? FaPause : FaPlay} />
+                      </Button>
+
+                      <Text fontSize="sm" minW="100px">
+                        {formatTime(currentTime)} / {formatTime(duration)}
+                      </Text>
                     </HStack>
 
-                    <Button
-                      onClick={toggleFullscreen}
-                      variant="ghost"
-                      color="white"
-                      size="sm"
-                      _hover={{ bg: "whiteAlpha.200" }}
-                      aria-label={isFullscreen ? t('video.controls.exitFullscreen') : t('video.controls.fullscreen')}
-                      minW="auto"
-                      p={2}
-                    >
-                      <Icon as={isFullscreen ? FaCompress : FaExpand} />
-                    </Button>
+                    <HStack spacing={3}>
+                      <HStack spacing={2} w="100px">
+                        <Icon as={FaVolumeUp} w={4} h={4} />
+                        <Box
+                          bg="whiteAlpha.300"
+                          h="1"
+                          borderRadius="full"
+                          cursor="pointer"
+                          flex="1"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const clickX = e.clientX - rect.left
+                            const percentage = (clickX / rect.width) * 100
+                            handleVolumeChange(percentage)
+                          }}
+                        >
+                          <Box
+                            bg="white"
+                            h="full"
+                            borderRadius="full"
+                            width={`${volume * 100}%`}
+                            transition="width 0.1s"
+                          />
+                        </Box>
+                      </HStack>
+
+                      <Button
+                        onClick={toggleFullscreen}
+                        variant="ghost"
+                        color="white"
+                        size="sm"
+                        _hover={{ bg: "whiteAlpha.200" }}
+                        aria-label={isFullscreen ? t('video.controls.exitFullscreen') : t('video.controls.fullscreen')}
+                        minW="auto"
+                        p={2}
+                      >
+                        <Icon as={isFullscreen ? FaCompress : FaExpand} />
+                      </Button>
+                    </HStack>
                   </HStack>
-                </HStack>
-              </VStack>
-            </Box>
+                </VStack>
+              </Box>
+            )}
           </Box>
         </Box>
 
