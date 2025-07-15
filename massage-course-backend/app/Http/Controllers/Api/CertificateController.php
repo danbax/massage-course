@@ -88,7 +88,7 @@ class CertificateController extends Controller
             return response()->json([
                 'message' => 'Certificate already exists',
                 'certificate' => new CertificateResource($existingCertificate)
-            ], 409);
+            ], 200);
         }
 
         // Generate new certificate

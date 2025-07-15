@@ -31,7 +31,7 @@ import {
 } from 'react-icons/fa'
 
 const Certificate = () => {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const { getCompletedLessons } = useCourse()
   const { t } = useLanguage()
   const [isEligible, setIsEligible] = useState(false)
@@ -44,11 +44,29 @@ const Certificate = () => {
   const completedLessons = getCompletedLessons()
 
   useEffect(() => {
-    checkEligibility()
-  }, [user])
+    if (token) {
+      checkEligibility()
+    } else {
+      setIsLoading(false)
+    }
+  }, [user, token])
+
+  useEffect(() => {
+    console.log('Certificate component state:', {
+      isLoading,
+      isEligible,
+      hasCertificate,
+      completedLessons,
+      token: !!token,
+      user: !!user
+    })
+  }, [isLoading, isEligible, hasCertificate, completedLessons, token, user])
 
   const checkEligibility = async () => {
-    if (!user?.token) return
+    if (!token) {
+      setIsLoading(false)
+      return
+    }
 
     try {
       setIsLoading(true)
@@ -56,12 +74,13 @@ const Certificate = () => {
       // Check if user is eligible for certificate
       const response = await fetch('/api/certificates/eligibility', {
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Eligibility response:', data)
         setIsEligible(data.eligible)
         setHasCertificate(data.has_certificate)
 
@@ -69,6 +88,8 @@ const Certificate = () => {
         if (data.has_certificate) {
           await fetchCertificate()
         }
+      } else {
+        console.error('Failed to check eligibility:', response.status)
       }
     } catch (error) {
       console.error('Error checking eligibility:', error)
@@ -81,7 +102,7 @@ const Certificate = () => {
     try {
       const response = await fetch('/api/certificates', {
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -97,7 +118,7 @@ const Certificate = () => {
   }
 
   const generateCertificate = async () => {
-    if (!user?.token) return
+    if (!token) return
 
     try {
       setIsGenerating(true)
@@ -105,7 +126,7 @@ const Certificate = () => {
       const response = await fetch('/api/certificates/generate', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -113,7 +134,17 @@ const Certificate = () => {
         const data = await response.json()
         setCertificate(data.certificate)
         setHasCertificate(true)
-        toast.success('Certificate generated successfully!')
+        
+        if (data.message === 'Certificate already exists') {
+          toast.info('Certificate already exists! Downloading now...')
+        } else {
+          toast.success('Certificate generated successfully! Downloading now...')
+        }
+        
+        // Automatically download the certificate PDF
+        setTimeout(() => {
+          downloadCertificatePDF()
+        }, 2000) // Increased delay to ensure DOM is updated
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Failed to generate certificate')
@@ -127,18 +158,26 @@ const Certificate = () => {
   }
 
   const downloadCertificatePDF = async () => {
-    if (!hasCertificate || !user) return
+    console.log('downloadCertificatePDF called', { hasCertificate, user: !!user })
+    
+    if (!hasCertificate || !user) {
+      console.log('Download blocked:', { hasCertificate, hasUser: !!user })
+      return
+    }
 
     try {
       setIsDownloading(true)
       
       // Get the certificate element
       const certificateElement = document.getElementById('certificate-template')
+      console.log('Certificate element found:', !!certificateElement)
+      
       if (!certificateElement) {
         toast.error('Certificate template not found')
         return
       }
 
+      console.log('Generating canvas from certificate element...')
       // Generate canvas from the certificate element
       const canvas = await html2canvas(certificateElement, {
         scale: 2,
@@ -147,6 +186,7 @@ const Certificate = () => {
         backgroundColor: '#ffffff'
       })
 
+      console.log('Canvas generated, creating PDF...')
       // Create PDF
       const pdf = new jsPDF('landscape', 'mm', 'a4')
       const imgWidth = 297 // A4 landscape width in mm
@@ -156,6 +196,7 @@ const Certificate = () => {
       
       // Download the PDF
       const fileName = `Certificate_${user.name.replace(/\s+/g, '_')}_${new Date().getFullYear()}.pdf`
+      console.log('Downloading PDF:', fileName)
       pdf.save(fileName)
       
       toast.success('Certificate downloaded successfully!')
@@ -177,7 +218,6 @@ const Certificate = () => {
 
     return (
       <Box
-        id="certificate-template"
         width="1056px"
         height="816px"
         bg="white"
@@ -462,7 +502,7 @@ const Certificate = () => {
           </motion.div>
 
           {/* Certificate Actions */}
-          {completedLessons >= 1 && (
+          {(completedLessons >= 1 || hasCertificate) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -475,7 +515,7 @@ const Certificate = () => {
                       leftIcon={<FaAward />}
                       onClick={generateCertificate}
                       isLoading={isGenerating}
-                      loadingText={t('certificates.generating')}
+                      loadingText="Generating & downloading..."
                       px={8}
                       py={6}
                       fontSize="lg"
@@ -486,7 +526,7 @@ const Certificate = () => {
                         boxShadow: 'xl'
                       }}
                     >
-                      {t('certificates.generateCertificate')}
+                      Generate & Download Certificate
                     </Button>
                 ) : (
                   <HStack spacing={4}>
@@ -541,6 +581,157 @@ const Certificate = () => {
           )}
         </VStack>
       </Container>
+      
+      {/* Hidden certificate template for PDF generation */}
+      {(hasCertificate || certificate) && (
+        <Box 
+          position="absolute" 
+          left="-9999px" 
+          top="-9999px"
+          visibility="hidden"
+        >
+          <Box
+            id="certificate-template"
+            width="1056px"
+            height="816px"
+            bg="white"
+            position="relative"
+            margin="0 auto"
+            boxShadow="0 4px 20px rgba(0,0,0,0.1)"
+            overflow="hidden"
+          >
+            {/* Background Pattern */}
+            <Box
+              position="absolute"
+              top="0"
+              left="0"
+              right="0"
+              bottom="0"
+              bgGradient="linear(45deg, #f7fafc 0%, #edf2f7 100%)"
+            />
+            
+            {/* Decorative Border */}
+            <Box
+              position="absolute"
+              top="20px"
+              left="20px"
+              right="20px"
+              bottom="20px"
+              border="3px solid"
+              borderColor="blue.500"
+              borderRadius="lg"
+            />
+            
+            <Box
+              position="absolute"
+              top="30px"
+              left="30px"
+              right="30px"
+              bottom="30px"
+              border="1px solid"
+              borderColor="blue.300"
+              borderRadius="md"
+            />
+
+            {/* Content */}
+            <VStack spacing={8} justify="center" h="full" px={16} py={12} position="relative" zIndex={1}>
+              {/* Header */}
+              <VStack spacing={4} textAlign="center">
+                <Heading fontSize="48px" fontWeight="800" color="blue.600" letterSpacing="wide">
+                  CERTIFICATE
+                </Heading>
+                <Text fontSize="24px" color="gray.600" fontWeight="500">
+                  OF COMPLETION
+                </Text>
+              </VStack>
+
+              {/* Recipient */}
+              <VStack spacing={4} textAlign="center">
+                <Text fontSize="18px" color="gray.700">
+                  This is to certify that
+                </Text>
+                <Heading fontSize="36px" fontWeight="700" color="gray.900" borderBottom="2px solid" borderColor="blue.500" pb={2}>
+                  {user?.name || 'Student Name'}
+                </Heading>
+                <Text fontSize="18px" color="gray.700">
+                  has successfully completed the
+                </Text>
+              </VStack>
+
+              {/* Course Title */}
+              <VStack spacing={2} textAlign="center">
+                <Heading fontSize="28px" fontWeight="600" color="blue.600">
+                  Professional Relaxation Massage Therapy Course
+                </Heading>
+                <Text fontSize="16px" color="gray.600">
+                  A comprehensive training program in massage therapy techniques
+                </Text>
+              </VStack>
+
+              {/* Details */}
+              <HStack spacing={12} justify="center">
+                <VStack spacing={2}>
+                  <Text fontSize="14px" color="gray.500" fontWeight="500">
+                    CERTIFICATE NUMBER
+                  </Text>
+                  <Text fontSize="16px" color="gray.800" fontWeight="600">
+                    {certificate?.certificate_number || 'MT-2025-0001'}
+                  </Text>
+                </VStack>
+                <VStack spacing={2}>
+                  <Text fontSize="14px" color="gray.500" fontWeight="500">
+                    DATE ISSUED
+                  </Text>
+                  <Text fontSize="16px" color="gray.800" fontWeight="600">
+                    {new Date().toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              {/* Signature Section */}
+              <Flex justify="space-between" align="end" w="full" pt={8}>
+                <VStack spacing={2}>
+                  <Box
+                    w="80px"
+                    h="80px"
+                    borderRadius="full"
+                    border="3px solid"
+                    borderColor="blue.500"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    bg="blue.50"
+                  >
+                    <Icon as={FaAward} w="30px" h="30px" color="blue.600" />
+                  </Box>
+                  <Text fontSize="12px" color="gray.500" textAlign="center">
+                    Official Seal
+                  </Text>
+                </VStack>
+                
+                <VStack spacing={2}>
+                  <Text fontSize="16px" color="gray.600">
+                    Massage Academy Director
+                  </Text>
+                  <Text fontSize="18px" fontWeight="600" color="gray.800">
+                    Dr. Sarah Johnson
+                  </Text>
+                  <Box w="150px" h="1px" bg="gray.400" />
+                </VStack>
+              </Flex>
+
+              {/* Verification Code */}
+              <Text fontSize="12px" color="gray.500" position="absolute" bottom="20px" right="30px">
+                Verification Code: {certificate?.verification_code || 'ABC123XYZ'}
+              </Text>
+            </VStack>
+          </Box>
+        </Box>
+      )}
     </Box>
   )
 }

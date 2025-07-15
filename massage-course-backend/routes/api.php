@@ -102,7 +102,8 @@ Route::middleware(['api_auth'])->group(function () {
     Route::prefix('certificates')->group(function () {
         Route::get('/', [CertificateController::class, 'index']);
         Route::get('/{certificate}', [CertificateController::class, 'show']);
-        Route::get('/{certificate}/download', [CertificateController::class, 'download']);
+        Route::get('/{certificate}/download', [CertificateController::class, 'download'])
+            ->name('api.certificates.download');
         Route::post('/generate', [CertificateController::class, 'generate']);
         Route::get('/eligibility', [CertificateController::class, 'checkEligibility']);
     });
