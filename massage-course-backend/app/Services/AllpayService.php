@@ -18,24 +18,37 @@ class AllpayService
 
     public function __construct()
     {
-        $this->apiLogin = config('services.allpay.login');
-        $this->apiKey = config('services.allpay.key');
+        $apiLogin = config('services.allpay.login');
+        $apiKey = config('services.allpay.key');
+        
+        if (empty($apiLogin)) {
+            throw new \Exception('ALLPAY_LOGIN not configured. Please add ALLPAY_LOGIN to your .env file and run "php artisan config:clear".');
+        }
+        
+        if (empty($apiKey)) {
+            throw new \Exception('ALLPAY_KEY not configured. Please add ALLPAY_KEY to your .env file and run "php artisan config:clear".');
+        }
+        
+        $this->apiLogin = $apiLogin;
+        $this->apiKey = $apiKey;
         $this->apiUrl = config('services.allpay.api_url', 'https://allpay.to/app/?show=getpayment&mode=api8');
         $this->notificationUrl = config('app.url') . '/api/payments/allpay/webhook';
-        $this->successUrl = config('app.frontend_url') . '/payment-success';
-        $this->backUrl = config('app.frontend_url') . '/purchase';
+        $this->successUrl = config('app.frontend_url', config('app.url')) . '/payment-success';
+        $this->backUrl = config('app.frontend_url', config('app.url')) . '/purchase';
     }
 
-    public function createPaymentLink(User $user, float $amount, string $currency = 'USD'): array
+    public function createPaymentLink(User $user, float $amount, string $currency = 'USD', string $plan = 'premium'): array
     {
         $orderId = 'ORDER_' . time() . '_' . $user->id;
+        
+        $courseName = $plan === 'basic' ? 'Basic Massage Course' : 'Premium Massage Course';
         
         $requestData = [
             'login' => $this->apiLogin,
             'order_id' => $orderId,
             'items' => [
                 [
-                    'name' => 'Professional Relaxation Massage Therapy Course',
+                    'name' => $courseName . ' $' . $amount,
                     'price' => $amount,
                     'qty' => 1,
                     'vat' => 0
@@ -49,7 +62,7 @@ class AllpayService
             'client_name' => $user->name,
             'client_email' => $user->email,
             'client_phone' => $user->phone ?? '',
-            'client_tehudat' => $user->tax_id ?? '000000000',
+            'client_tehudat' => '000000000',
             'expire' => time() + 3600
         ];
 
@@ -81,7 +94,8 @@ class AllpayService
             Log::error('Allpay payment creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
-                'amount' => $amount
+                'amount' => $amount,
+                'plan' => $plan
             ]);
             throw $e;
         }

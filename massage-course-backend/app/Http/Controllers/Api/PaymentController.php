@@ -3,25 +3,31 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Payment\ProcessPaymentRequest;
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\Invoice4UService;
+use App\Services\AllpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class PaymentController extends Controller
 {
     public function __construct(
-        private Invoice4UService $invoice4uService
+        private AllpayService $allpayService
     ) {}
 
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'message' => 'Authentication required'
+            ], 401);
+        }
         
         $payments = $user->payments()
             ->orderBy('created_at', 'desc')
@@ -40,42 +46,72 @@ class PaymentController extends Controller
 
     public function createPaymentIntent(Request $request): JsonResponse
     {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'plan' => 'required|string|in:basic,premium',
+            'user_data' => 'required|array',
+            'user_data.email' => 'required|email',
+            'user_data.first_name' => 'required|string|max:255',
+            'user_data.last_name' => 'required|string|max:255',
+            'user_data.phone' => 'required|string|max:20',
+        ]);
+
+        $amount = $request->input('amount');
+        $plan = $request->input('plan');
+        $userData = $request->input('user_data');
+        $currency = 'USD';
+
         $user = $request->user();
-
-        $existingPayment = $user->payments()->where('status', 'succeeded')->first();
-        if ($existingPayment) {
-            return response()->json([
-                'message' => 'Already have access to the course'
-            ], 409);
+        
+        if ($user) {
+            $existingPayment = $user->payments()->where('status', 'succeeded')->first();
+            if ($existingPayment) {
+                return response()->json([
+                    'message' => 'Already have access to the course'
+                ], 409);
+            }
+        } else {
+            $existingUser = User::where('email', $userData['email'])->first();
+            if ($existingUser) {
+                $existingPayment = $existingUser->payments()->where('status', 'succeeded')->first();
+                if ($existingPayment) {
+                    return response()->json([
+                        'message' => 'User with this email already has course access'
+                    ], 409);
+                }
+                $user = $existingUser;
+            }
         }
-
-        $coursePrice = 297.00;
-        $currency = 'ILS';
 
         try {
             DB::beginTransaction();
 
-            $invoice = $this->invoice4uService->createInvoice($user, $coursePrice, $currency);
-            
-            $paymentLink = $this->invoice4uService->createPaymentLink(
-                $invoice['id'], 
-                $coursePrice, 
-                $currency
-            );
+            if (!$user) {
+                $user = User::create([
+                    'name' => $userData['first_name'] . ' ' . $userData['last_name'],
+                    'email' => $userData['email'],
+                    'phone' => $userData['phone'],
+                    'password' => Hash::make(Str::random(12)),
+                    'email_verified_at' => now(),
+                ]);
+            }
+
+            $paymentLink = $this->allpayService->createPaymentLink($user, $amount, $currency, $plan);
 
             $payment = Payment::create([
                 'user_id' => $user->id,
-                'amount' => $coursePrice,
+                'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'pending',
-                'payment_method' => 'invoice4u',
-                'payment_provider' => 'invoice4u',
-                'provider_transaction_id' => $paymentLink['id'],
+                'payment_method' => 'card',
+                'payment_provider' => 'allpay',
+                'provider_transaction_id' => $paymentLink['order_id'],
                 'payment_data' => [
-                    'invoice_id' => $invoice['id'],
-                    'payment_link_id' => $paymentLink['id'],
+                    'order_id' => $paymentLink['order_id'],
                     'payment_url' => $paymentLink['payment_url'],
-                    'invoice_data' => $invoice
+                    'request_data' => $paymentLink['request_data'],
+                    'plan' => $plan,
+                    'user_data' => $userData
                 ]
             ]);
 
@@ -83,19 +119,23 @@ class PaymentController extends Controller
 
             return response()->json([
                 'payment_id' => $payment->id,
-                'invoice_id' => $invoice['id'],
+                'order_id' => $paymentLink['order_id'],
                 'payment_url' => $paymentLink['payment_url'],
-                'amount' => $coursePrice,
+                'amount' => $amount,
                 'currency' => $currency,
-                'expires_at' => $paymentLink['expires_at'] ?? null,
-                'description' => 'Professional Relaxation Massage Therapy Course'
+                'provider' => 'allpay',
+                'plan' => $plan,
+                'description' => 'Professional Relaxation Massage Therapy Course',
+                'user_created' => !$request->user(),
+                'user_id' => $user->id
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             
             Log::error('Payment intent creation failed', [
-                'user_id' => $user->id,
+                'user_data' => $userData,
+                'amount' => $amount,
                 'error' => $e->getMessage()
             ]);
 
@@ -112,10 +152,13 @@ class PaymentController extends Controller
             'payment_id' => 'required|exists:payments,id'
         ]);
 
-        $user = $request->user();
-        $payment = Payment::where('id', $request->payment_id)
-                         ->where('user_id', $user->id)
-                         ->firstOrFail();
+        $payment = Payment::findOrFail($request->payment_id);
+        
+        if ($request->user() && $payment->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
 
         if ($payment->status === 'succeeded') {
             return response()->json([
@@ -126,22 +169,20 @@ class PaymentController extends Controller
         }
 
         try {
-            $invoiceId = $payment->payment_data['invoice_id'];
-            $invoice = $this->invoice4uService->getInvoice($invoiceId);
+            $orderId = $payment->provider_transaction_id;
+            $status = $this->allpayService->verifyPaymentStatus($orderId);
 
-            if ($invoice['status'] === 'paid') {
+            if ($status['status'] == 1) {
                 $payment->update([
                     'status' => 'succeeded',
                     'processed_at' => now(),
                     'payment_data' => array_merge($payment->payment_data, [
                         'confirmed_at' => now()->toISOString(),
-                        'invoice_status' => $invoice['status']
+                        'status_check' => $status
                     ])
                 ]);
 
-                $user->update(['has_course_access' => true]);
-
-                $this->invoice4uService->sendInvoiceByEmail($invoiceId, $user->email);
+                $payment->user->update(['has_course_access' => true]);
 
                 return response()->json([
                     'message' => 'Payment confirmed and course access granted',
@@ -151,8 +192,8 @@ class PaymentController extends Controller
             }
 
             return response()->json([
-                'message' => 'Payment not yet confirmed by Invoice4U',
-                'payment_status' => $invoice['status']
+                'message' => 'Payment not yet confirmed by Allpay',
+                'payment_status' => $status['status']
             ], 202);
 
         } catch (\Exception $e) {
@@ -168,54 +209,45 @@ class PaymentController extends Controller
         }
     }
 
-    public function show(Payment $payment, Request $request): JsonResponse
+    public function handleAllpayWebhook(Request $request): JsonResponse
     {
-        $this->authorize('view', $payment);
-
-        $paymentData = $payment->toArray();
-        
-        if ($payment->payment_provider === 'invoice4u' && isset($payment->payment_data['invoice_id'])) {
-            try {
-                $invoice = $this->invoice4uService->getInvoice($payment->payment_data['invoice_id']);
-                $paymentData['invoice_details'] = $invoice;
-            } catch (\Exception $e) {
-                Log::warning('Failed to fetch invoice details', [
-                    'payment_id' => $payment->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
-
-        return response()->json([
-            'payment' => $paymentData
-        ]);
-    }
-
-    public function handleWebhook(Request $request): JsonResponse
-    {
-        $payload = $request->getContent();
-        $signature = $request->header('X-Invoice4U-Signature');
-
         try {
-            if (!$this->invoice4uService->validateWebhook($payload, $signature)) {
-                Log::warning('Invalid Invoice4U webhook signature');
-                return response()->json(['error' => 'Invalid signature'], 401);
-            }
-
-            $webhookData = json_decode($payload, true);
-            $this->invoice4uService->processWebhook($webhookData);
+            $data = $request->all();
+            
+            Log::info('Allpay webhook received', $data);
+            
+            $this->allpayService->processWebhook($data);
             
             return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
-            Log::error('Invoice4U webhook error: ' . $e->getMessage());
+            Log::error('Allpay webhook error: ' . $e->getMessage(), [
+                'data' => $request->all()
+            ]);
             
             return response()->json(['error' => 'Webhook failed'], 400);
         }
     }
 
+    public function show(Payment $payment, Request $request): JsonResponse
+    {
+        if ($request->user() && $payment->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        return response()->json([
+            'payment' => $payment->toArray()
+        ]);
+    }
+
     public function requestRefund(Payment $payment, Request $request): JsonResponse
     {
-        $this->authorize('refund', $payment);
+        if ($request->user() && $payment->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
 
         $request->validate([
             'reason' => 'nullable|string|max:500'
@@ -228,8 +260,8 @@ class PaymentController extends Controller
         }
 
         try {
-            $paymentId = $payment->provider_transaction_id;
-            $refund = $this->invoice4uService->refundPayment($paymentId, null, $request->reason);
+            $orderId = $payment->provider_transaction_id;
+            $refund = $this->allpayService->processRefund($orderId);
 
             $payment->update([
                 'status' => 'refunded',
@@ -266,6 +298,13 @@ class PaymentController extends Controller
     {
         $user = $request->user();
         
+        if (!$user) {
+            return response()->json([
+                'has_access' => false,
+                'message' => 'Authentication required'
+            ]);
+        }
+        
         $hasAccess = $user->payments()->where('status', 'succeeded')->exists() || 
                     $user->has_course_access;
         
@@ -275,76 +314,43 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function downloadInvoice(Payment $payment, Request $request): JsonResponse
+    public function getPaymentStatus(Request $request): JsonResponse
     {
-        $this->authorize('view', $payment);
+        $request->validate([
+            'payment_id' => 'required|exists:payments,id'
+        ]);
 
-        if ($payment->payment_provider !== 'invoice4u' || !isset($payment->payment_data['invoice_id'])) {
+        $payment = Payment::findOrFail($request->query('payment_id'));
+
+        if ($request->user() && $payment->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => 'Invoice not available for this payment'
-            ], 404);
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
         try {
-            $invoiceId = $payment->payment_data['invoice_id'];
-            $pdf = $this->invoice4uService->getInvoicePdf($invoiceId);
+            $status = $this->allpayService->verifyPaymentStatus($payment->provider_transaction_id);
+            
+            $updatedStatus = match($status['status']) {
+                1 => 'succeeded',
+                0 => 'failed',
+                3 => 'refunded',
+                default => 'pending'
+            };
 
-            return response()->json([
-                'message' => 'Invoice PDF generated successfully',
-                'invoice_id' => $invoiceId,
-                'pdf_base64' => base64_encode($pdf),
-                'filename' => 'invoice-' . $invoiceId . '.pdf'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Invoice download failed', [
-                'payment_id' => $payment->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'message' => 'Failed to download invoice',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function getPaymentStatus(Payment $payment, Request $request): JsonResponse
-    {
-        $this->authorize('view', $payment);
-
-        if ($payment->payment_provider !== 'invoice4u') {
-            return response()->json(['status' => $payment->status]);
-        }
-
-        try {
-            if (isset($payment->payment_data['invoice_id'])) {
-                $invoice = $this->invoice4uService->getInvoice($payment->payment_data['invoice_id']);
+            if ($updatedStatus !== $payment->status) {
+                $payment->update(['status' => $updatedStatus]);
                 
-                $updatedStatus = match($invoice['status']) {
-                    'paid' => 'succeeded',
-                    'failed' => 'failed',
-                    'pending' => 'pending',
-                    'cancelled' => 'cancelled',
-                    default => $payment->status
-                };
-
-                if ($updatedStatus !== $payment->status) {
-                    $payment->update(['status' => $updatedStatus]);
-                    
-                    if ($updatedStatus === 'succeeded') {
-                        $payment->user->update(['has_course_access' => true]);
-                    }
+                if ($updatedStatus === 'succeeded') {
+                    $payment->user->update(['has_course_access' => true]);
                 }
-
-                return response()->json([
-                    'status' => $updatedStatus,
-                    'invoice_status' => $invoice['status'],
-                    'updated' => $updatedStatus !== $payment->status
-                ]);
             }
 
-            return response()->json(['status' => $payment->status]);
+            return response()->json([
+                'status' => $updatedStatus,
+                'allpay_status' => $status['status'],
+                'updated' => $updatedStatus !== $payment->status
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Payment status check failed', [
@@ -359,15 +365,15 @@ class PaymentController extends Controller
     public function testConnection(): JsonResponse
     {
         try {
-            $result = $this->invoice4uService->testConnection();
+            $allpayResult = $this->allpayService->testConnection();
             
             return response()->json([
-                'message' => 'Invoice4U connection test completed',
-                'result' => $result
+                'message' => 'Payment provider connection test completed',
+                'allpay' => $allpayResult
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Invoice4U connection test failed',
+                'message' => 'Connection test failed',
                 'error' => $e->getMessage()
             ], 500);
         }

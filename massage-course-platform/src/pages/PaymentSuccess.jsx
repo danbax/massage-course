@@ -40,7 +40,6 @@ const PaymentSuccess = () => {
       }
 
       try {
-        // Check if user has access now
         const response = await fetch('/api/payments/access', {
           headers: {
             'Authorization': `Bearer ${user.token}`

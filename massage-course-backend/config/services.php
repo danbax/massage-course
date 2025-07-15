@@ -34,5 +34,11 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    
+    'allpay' => [
+        'login' => env('ALLPAY_LOGIN'),
+        'key' => env('ALLPAY_KEY'),
+        'api_url' => env('ALLPAY_API_URL', 'https://allpay.to/app/?show=getpayment&mode=api8'),
+    ],
 
 ];

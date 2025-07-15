@@ -108,18 +108,6 @@ Route::middleware(['api_auth'])->group(function () {
         Route::get('/eligibility', [CertificateController::class, 'checkEligibility']);
     });
 
-    Route::prefix('payments')->group(function () {
-        Route::get('/', [PaymentController::class, 'index']);
-        Route::post('/intent', [PaymentController::class, 'createPaymentIntent']);
-        Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
-        Route::get('/access', [PaymentController::class, 'checkAccess']);
-        Route::get('/test-connection', [PaymentController::class, 'testConnection']);
-        Route::get('/{payment}', [PaymentController::class, 'show']);
-        Route::get('/{payment}/status', [PaymentController::class, 'getPaymentStatus']);
-        Route::get('/{payment}/invoice/download', [PaymentController::class, 'downloadInvoice']);
-        Route::post('/{payment}/refund', [PaymentController::class, 'requestRefund']);
-    });
-
     Route::prefix('settings')->group(function () {
         Route::get('/', [SettingsController::class, 'show']);
         Route::put('/', [SettingsController::class, 'update']);
@@ -138,3 +126,31 @@ Route::middleware(['api_auth'])->group(function () {
         Route::get('/lessons/{lesson}/urls', [CloudinaryController::class, 'generateVideoUrls']);
     });
 });
+
+Route::prefix('payments')->group(function () {
+    // Authenticated payment routes
+    Route::get('/', [PaymentController::class, 'index']);
+    Route::post('/intent', [PaymentController::class, 'createPaymentIntent']);
+    Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
+    Route::get('/access', [PaymentController::class, 'checkAccess']);
+    Route::get('/test-connection', [PaymentController::class, 'testConnection']);
+    
+    // Payment specific routes (with route model binding)
+    Route::get('/{payment}', [PaymentController::class, 'show']);
+    Route::get('/{payment}/status', [PaymentController::class, 'getPaymentStatus']);
+    Route::post('/{payment}/refund', [PaymentController::class, 'requestRefund']);
+    
+    // Webhook routes (no auth middleware - webhooks come from external services)
+    Route::post('/allpay/webhook', [PaymentController::class, 'handleAllpayWebhook']);
+    
+        Route::get('/', [PaymentController::class, 'index']);
+        Route::post('/intent', [PaymentController::class, 'createPaymentIntent']);
+        Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
+        Route::get('/access', [PaymentController::class, 'checkAccess']);
+        Route::get('/test-connection', [PaymentController::class, 'testConnection']);
+        Route::get('/{payment}', [PaymentController::class, 'show']);
+        Route::get('/{payment}/status', [PaymentController::class, 'getPaymentStatus']);
+        Route::get('/{payment}/invoice/download', [PaymentController::class, 'downloadInvoice']);
+        Route::post('/{payment}/refund', [PaymentController::class, 'requestRefund']);
+});
+

@@ -19,7 +19,9 @@ import {
   Badge,
   Input,
   SimpleGrid,
-  Spinner
+  Spinner,
+  Progress,
+  Circle
 } from '@chakra-ui/react'
 import { 
   FaCheck,
@@ -35,28 +37,29 @@ import {
   FaHeart,
   FaGift,
   FaExternalLinkAlt,
-  FaFileInvoice
+  FaCheckCircle,
+  FaSpinner,
+  FaTimes,
+  FaInfoCircle
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 
 const Purchase = () => {
   const navigate = useNavigate()
-  const { login, user } = useAuth()
+  const { user } = useAuth()
   const { t } = useLanguage()
-  const [selectedPlan, setSelectedPlan] = useState('lifetime')
+  
+  const [selectedPlan, setSelectedPlan] = useState('premium')
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingPayment, setIsCheckingPayment] = useState(false)
-  const [paymentUrl, setPaymentUrl] = useState(null)
-  const [paymentId, setPaymentId] = useState(null)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [paymentData, setPaymentData] = useState(null)
+  const [paymentStep, setPaymentStep] = useState('form')
   const [formData, setFormData] = useState({
     email: user?.email || '',
-    firstName: user?.name?.split(' ')[0] || '',
-    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
-    phone: user?.phone || '',
-    city: user?.city || '',
-    address: user?.address || '',
-    postalCode: user?.postal_code || '',
-    taxId: user?.tax_id || ''
+    first_name: user?.name?.split(' ')[0] || '',
+    last_name: user?.name?.split(' ').slice(1).join(' ') || '',
+    phone: user?.phone || ''
   })
 
   const handleInputChange = (e) => {
@@ -67,51 +70,39 @@ const Purchase = () => {
     }))
   }
 
-  const handleRegisterAndPurchase = async (e) => {
+  const handlePurchase = async (e) => {
     e.preventDefault()
     setIsLoading(true)
+    setPaymentStep('processing')
+    setIsPaymentModalOpen(true)
 
     try {
-      let currentUser = user
-
-      if (!currentUser) {
-        const registerData = {
-          name: `${formData.firstName} ${formData.lastName}`,
+      const selectedPlanData = plans.find(p => p.id === selectedPlan)
+      
+      const paymentRequestData = {
+        provider: 'allpay',
+        amount: selectedPlanData.price,
+        plan: selectedPlan,
+        user_data: {
           email: formData.email,
-          phone: formData.phone,
-          city: formData.city,
-          address: formData.address,
-          postal_code: formData.postalCode,
-          tax_id: formData.taxId,
-          password: Math.random().toString(36).slice(-8),
-          password_confirmation: ''
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone
         }
-        registerData.password_confirmation = registerData.password
+      }
 
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(registerData)
-        })
+      const headers = {
+        'Content-Type': 'application/json'
+      }
 
-        if (!response.ok) {
-          throw new Error('Registration failed')
-        }
-
-        const authData = await response.json()
-        login(authData.user)
-        currentUser = authData.user
-        toast.success('Account created successfully!')
+      if (user?.token) {
+        headers['Authorization'] = `Bearer ${user.token}`
       }
 
       const paymentResponse = await fetch('/api/payments/intent', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        }
+        headers,
+        body: JSON.stringify(paymentRequestData)
       })
 
       if (!paymentResponse.ok) {
@@ -119,33 +110,57 @@ const Purchase = () => {
         throw new Error(errorData.message || 'Payment initialization failed')
       }
 
-      const paymentData = await paymentResponse.json()
+      const responseData = await paymentResponse.json()
+      setPaymentData(responseData)
       
-      setPaymentUrl(paymentData.payment_url)
-      setPaymentId(paymentData.payment_id || paymentData.invoice_id)
+      if (responseData.user_created) {
+        toast.success('Account created successfully!')
+      }
       
-      toast.success('Payment link created! Redirecting to Invoice4U...')
-      
-      setTimeout(() => {
-        window.open(paymentData.payment_url, '_blank')
-        setIsCheckingPayment(true)
-        startPaymentCheck(paymentData.payment_id || paymentData.invoice_id)
-      }, 1000)
+      setPaymentStep('payment')
+      openPaymentPopup(responseData.payment_url, responseData.payment_id)
 
     } catch (error) {
       console.error('Purchase process failed:', error)
       toast.error(error.message || 'Purchase failed. Please try again.')
+      setPaymentStep('form')
+      setIsPaymentModalOpen(false)
     } finally {
       setIsLoading(false)
     }
   }
 
+  const openPaymentPopup = (paymentUrl, paymentId) => {
+    const popup = window.open(
+      paymentUrl,
+      'allpay_payment',
+      'width=800,height=700,scrollbars=yes,resizable=yes,status=yes,location=yes'
+    )
+
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed)
+        startPaymentCheck(paymentId)
+      }
+    }, 1000)
+
+    setTimeout(() => {
+      if (!popup.closed) {
+        clearInterval(checkClosed)
+        startPaymentCheck(paymentId)
+      }
+    }, 300000)
+  }
+
   const startPaymentCheck = (paymentId) => {
+    setIsCheckingPayment(true)
+    
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/payments/${paymentId}/status`, {
+        const response = await fetch(`/api/payments/status?payment_id=${paymentId}`, {
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${user.token}`
+            'Content-Type': 'application/json'
           }
         })
 
@@ -156,37 +171,48 @@ const Purchase = () => {
         if (data.status === 'succeeded') {
           clearInterval(interval)
           setIsCheckingPayment(false)
+          setPaymentStep('success')
           toast.success('Payment completed successfully!')
-          navigate('/app/courses')
+          
+          setTimeout(() => {
+            setIsPaymentModalOpen(false)
+            navigate('/payment-success')
+          }, 3000)
           return
         }
         
         if (data.status === 'failed' || data.status === 'cancelled') {
           clearInterval(interval)
           setIsCheckingPayment(false)
+          setPaymentStep('form')
           toast.error('Payment was not completed. Please try again.')
-          setPaymentUrl(null)
-          setPaymentId(null)
+          setIsPaymentModalOpen(false)
         }
       } catch (error) {
         console.error('Payment check failed:', error)
       }
-    }, 5000)
+    }, 3000)
 
     setTimeout(() => {
       clearInterval(interval)
       setIsCheckingPayment(false)
+      if (paymentStep !== 'success') {
+        setPaymentStep('form')
+        setIsPaymentModalOpen(false)
+        toast.info('Payment check timed out. Please check your payment status manually.')
+      }
     }, 300000)
   }
 
   const handleManualCheck = async () => {
-    if (!paymentId) return
+    if (!paymentData?.payment_id) return
     
     setIsCheckingPayment(true)
     try {
-      const response = await fetch(`/api/payments/${paymentId}/status`, {
+      const response = await fetch(`/api/payments/status?payment_id=${paymentData.payment_id}`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Content-Type': 'application/json'
         }
       })
 
@@ -198,8 +224,12 @@ const Purchase = () => {
       const data = await response.json()
       
       if (data.status === 'succeeded') {
+        setPaymentStep('success')
         toast.success('Payment confirmed! Redirecting...')
-        navigate('/app/courses')
+        setTimeout(() => {
+          setIsPaymentModalOpen(false)
+          navigate('/payment-success')
+        }, 2000)
         return
       }
       
@@ -252,23 +282,209 @@ const Purchase = () => {
   const plans = [
     {
       id: 'basic',
-      name: t('purchase.plans.basic.name'),
+      name: 'Basic Course',
       price: 15,
-      originalPrice: 30,
+      originalPrice: 39,
       period: 'one-time',
-      features: t('purchase.plans.basic.features'),
+      features: [
+        '20+ Video Lessons',
+        'Basic Massage Techniques',
+        'Course Materials',
+        'Email Support',
+        '6 Months Access'
+      ],
       popular: false
     },
     {
-      id: 'lifetime',
-      name: t('purchase.plans.lifetime.name'),
+      id: 'premium',
+      name: 'Premium Course',
       price: 20,
-      originalPrice: 50,
+      originalPrice: 49,
       period: 'one-time',
-      features: t('purchase.plans.lifetime.features'),
+      features: [
+        '40+ Video Lessons',
+        'Advanced Techniques',
+        'Professional Certification',
+        'Lifetime Access',
+        'Expert Support',
+        'Downloadable Resources'
+      ],
       popular: true
     }
   ]
+
+  const PaymentModal = () => {
+    if (!isPaymentModalOpen) return null
+    
+    return (
+      <Box
+        position="fixed"
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        bg="blackAlpha.600"
+        zIndex={1000}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        p={4}
+      >
+        <Box
+          bg="white"
+          borderRadius="xl"
+          boxShadow="2xl"
+          maxW="lg"
+          w="full"
+          maxH="90vh"
+          overflow="auto"
+        >
+          <Box p={6} borderBottom="1px solid" borderColor="gray.200">
+            <Flex alignItems="center" justify="space-between">
+              <HStack spacing={3}>
+                {paymentStep === 'processing' && <Spinner size="sm" />}
+                {paymentStep === 'payment' && <Icon as={FaCreditCard} color="blue.500" />}
+                {paymentStep === 'success' && <Icon as={FaCheckCircle} color="green.500" />}
+                <Text fontSize="lg" fontWeight="600">
+                  {paymentStep === 'processing' && 'Processing Payment...'}
+                  {paymentStep === 'payment' && 'Complete Your Payment'}
+                  {paymentStep === 'success' && 'Payment Successful!'}
+                </Text>
+              </HStack>
+              {paymentStep !== 'success' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                >
+                  <Icon as={FaTimes} />
+                </Button>
+              )}
+            </Flex>
+          </Box>
+          
+          <Box p={6}>
+            {paymentStep === 'processing' && (
+              <VStack spacing={4}>
+                <Progress size="lg" isIndeterminate colorScheme="blue" w="full" />
+                <Text textAlign="center" color="gray.600">
+                  Setting up your payment with Allpay...
+                </Text>
+              </VStack>
+            )}
+
+            {paymentStep === 'payment' && (
+              <VStack spacing={4}>
+                <Box p={4} bg="blue.50" borderRadius="lg" border="1px solid" borderColor="blue.200" w="full">
+                  <HStack spacing={3} align="start">
+                    <Icon as={FaInfoCircle} color="blue.500" mt={1} />
+                    <VStack align="start" spacing={1} fontSize="sm">
+                      <Text fontWeight="600" color="blue.800">
+                        Complete payment in the popup window
+                      </Text>
+                      <Text color="blue.700">
+                        A secure payment window has opened. Complete your payment there.
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </Box>
+
+                <Box w="full" p={4} bg="gray.50" borderRadius="lg">
+                  <VStack spacing={3}>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="600">Course:</Text>
+                      <Text>{plans.find(p => p.id === selectedPlan)?.name}</Text>
+                    </HStack>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="600">Amount:</Text>
+                      <Text fontSize="lg" fontWeight="700" color="green.600">
+                        ${paymentData?.amount}
+                      </Text>
+                    </HStack>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="600">Provider:</Text>
+                      <Badge colorScheme="blue">Allpay</Badge>
+                    </HStack>
+                  </VStack>
+                </Box>
+
+                {paymentData?.payment_url && (
+                  <Button
+                    as="a"
+                    href={paymentData.payment_url}
+                    target="_blank"
+                    size="lg"
+                    colorScheme="blue"
+                    leftIcon={<FaExternalLinkAlt />}
+                    w="full"
+                  >
+                    Open Payment Window
+                  </Button>
+                )}
+
+                <VStack spacing={3} w="full">
+                  <HStack spacing={2}>
+                    <Circle size="6" bg={isCheckingPayment ? 'blue.500' : 'gray.300'}>
+                      {isCheckingPayment ? (
+                        <Spinner size="xs" color="white" />
+                      ) : (
+                        <Text fontSize="xs" color="white">1</Text>
+                      )}
+                    </Circle>
+                    <Text fontSize="sm" color={isCheckingPayment ? 'blue.600' : 'gray.500'}>
+                      {isCheckingPayment ? 'Checking payment status...' : 'Waiting for payment confirmation'}
+                    </Text>
+                  </HStack>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleManualCheck}
+                    isLoading={isCheckingPayment}
+                    leftIcon={<FaCheck />}
+                  >
+                    Check Payment Status
+                  </Button>
+                </VStack>
+              </VStack>
+            )}
+
+            {paymentStep === 'success' && (
+              <VStack spacing={6} textAlign="center">
+                <Circle size="20" bg="green.100">
+                  <Icon as={FaCheckCircle} boxSize="10" color="green.500" />
+                </Circle>
+                
+                <VStack spacing={2}>
+                  <Heading size="lg" color="green.600">Payment Successful!</Heading>
+                  <Text color="gray.600">
+                    Welcome to the Professional Massage Therapy Course!
+                  </Text>
+                </VStack>
+
+                <Box w="full" p={4} bg="green.50" borderRadius="lg" border="1px solid" borderColor="green.200">
+                  <VStack spacing={2}>
+                    <Text fontWeight="600" color="green.800">
+                      🎉 You now have access to:
+                    </Text>
+                    <VStack spacing={1} fontSize="sm" color="green.700">
+                      <Text>✓ Professional Video Lessons</Text>
+                      <Text>✓ Downloadable Course Materials</Text>
+                      <Text>✓ Professional Certification</Text>
+                      <Text>✓ Expert Support Community</Text>
+                    </VStack>
+                  </VStack>
+                </Box>
+
+                <Text fontSize="sm" color="gray.500">
+                  Redirecting to success page in a few seconds...
+                </Text>
+              </VStack>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    )
+  }
 
   return (
     <Box bg="white" minH="100vh">
@@ -305,49 +521,6 @@ const Purchase = () => {
       </Box>
 
       <Container maxW="7xl" py={8}>
-        {paymentUrl && (
-          <Box 
-            status="info" 
-            mb={6} 
-            borderRadius="lg"
-            bg="blue.50"
-            border="1px solid"
-            borderColor="blue.200"
-            p={4}
-          >
-            <HStack spacing={3}>
-              <Icon as={FaFileInvoice} color="blue.500" />
-              <VStack align="start" spacing={2} flex={1}>
-                <Text fontWeight="600" color="blue.800">Payment Link Created</Text>
-                <Text fontSize="sm" color="blue.700">
-                  Click the button below to complete your payment with Invoice4U.
-                </Text>
-                <HStack spacing={3}>
-                  <Button
-                    as="a"
-                    href={paymentUrl}
-                    target="_blank"
-                    size="sm"
-                    colorScheme="blue"
-                    leftIcon={<FaExternalLinkAlt />}
-                  >
-                    Open Payment Link
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleManualCheck}
-                    isLoading={isCheckingPayment}
-                    leftIcon={<FaFileInvoice />}
-                  >
-                    Check Payment Status
-                  </Button>
-                </HStack>
-              </VStack>
-            </HStack>
-          </Box>
-        )}
-
         <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={12}>
           <VStack spacing={8} align="stretch">
             <motion.div
@@ -501,7 +674,7 @@ const Purchase = () => {
                             top="-8px"
                             left="50%"
                             transform="translateX(-50%)"
-                            bg="gradient-primary"
+                            bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
                             color="white"
                             fontSize="xs"
                             px={2}
@@ -568,14 +741,14 @@ const Purchase = () => {
 
                   <Box h="1px" bg="gray.200" w="full" my={2} />
 
-                  <form onSubmit={handleRegisterAndPurchase}>
+                  <form onSubmit={handlePurchase}>
                     <VStack spacing={4}>
                       <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
                         <VStack align="start" spacing={2}>
                           <Text fontSize="sm" fontWeight="medium">First Name *</Text>
                           <Input
-                            name="firstName"
-                            value={formData.firstName}
+                            name="first_name"
+                            value={formData.first_name}
                             onChange={handleInputChange}
                             placeholder="John"
                             required
@@ -585,8 +758,8 @@ const Purchase = () => {
                         <VStack align="start" spacing={2}>
                           <Text fontSize="sm" fontWeight="medium">Last Name *</Text>
                           <Input
-                            name="lastName"
-                            value={formData.lastName}
+                            name="last_name"
+                            value={formData.last_name}
                             onChange={handleInputChange}
                             placeholder="Doe"
                             required
@@ -609,58 +782,14 @@ const Purchase = () => {
                       </VStack>
 
                       <VStack align="start" spacing={2} w="full">
-                        <Text fontSize="sm" fontWeight="medium">Phone</Text>
+                        <Text fontSize="sm" fontWeight="medium">Phone *</Text>
                         <Input
                           name="phone"
                           type="tel"
                           value={formData.phone}
                           onChange={handleInputChange}
                           placeholder="+972-50-123-4567"
-                          borderRadius="lg"
-                        />
-                      </VStack>
-
-                      <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
-                        <VStack align="start" spacing={2}>
-                          <Text fontSize="sm" fontWeight="medium">City</Text>
-                          <Input
-                            name="city"
-                            value={formData.city}
-                            onChange={handleInputChange}
-                            placeholder="Tel Aviv"
-                            borderRadius="lg"
-                          />
-                        </VStack>
-                        <VStack align="start" spacing={2}>
-                          <Text fontSize="sm" fontWeight="medium">Postal Code</Text>
-                          <Input
-                            name="postalCode"
-                            value={formData.postalCode}
-                            onChange={handleInputChange}
-                            placeholder="12345"
-                            borderRadius="lg"
-                          />
-                        </VStack>
-                      </Grid>
-
-                      <VStack align="start" spacing={2} w="full">
-                        <Text fontSize="sm" fontWeight="medium">Address</Text>
-                        <Input
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          placeholder="123 Main Street"
-                          borderRadius="lg"
-                        />
-                      </VStack>
-
-                      <VStack align="start" spacing={2} w="full">
-                        <Text fontSize="sm" fontWeight="medium">Tax ID (Optional)</Text>
-                        <Input
-                          name="taxId"
-                          value={formData.taxId}
-                          onChange={handleInputChange}
-                          placeholder="Israeli tax ID"
+                          required
                           borderRadius="lg"
                         />
                       </VStack>
@@ -689,26 +818,27 @@ const Purchase = () => {
                         type="submit"
                         size="lg"
                         w="full"
-                        bg="gradient-primary"
+                        bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
                         color="white"
                         py={6}
                         fontSize="lg"
                         fontWeight="600"
                         borderRadius="xl"
                         isLoading={isLoading}
-                        loadingText="Creating Payment..."
-                        leftIcon={<Icon as={FaFileInvoice} />}
+                        loadingText="Processing..."
+                        leftIcon={<Icon as={FaCreditCard} />}
                         _hover={{
                           transform: 'translateY(-2px)',
-                          boxShadow: 'xl'
+                          boxShadow: 'xl',
+                          bg: "linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)"
                         }}
                       >
-                        {user ? 'Purchase Course' : 'Register & Purchase'}
+                        {user ? 'Purchase Course' : 'Start Learning Now'}
                       </Button>
 
                       <HStack spacing={2} justify="center" fontSize="xs" color="gray.500">
                         <Icon as={FaLock} />
-                        <Text>Secure payment via Invoice4U</Text>
+                        <Text>Secure payment via Allpay</Text>
                       </HStack>
                     </VStack>
                   </form>
@@ -718,6 +848,8 @@ const Purchase = () => {
           </motion.div>
         </Grid>
       </Container>
+
+      <PaymentModal />
     </Box>
   )
 }
