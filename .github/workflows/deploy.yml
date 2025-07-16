@@ -52,7 +52,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           local-dir: massage-course-backend/
-          server-dir: /home/${{ secrets.FTP_USERNAME }}/massage-course-backend/
+          server-dir: /massage-course-backend/
           exclude: |
             **/public/**
             **/.git*
@@ -71,6 +71,6 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           local-dir: massage-course-backend/public/
-          server-dir: /home/${{ secrets.FTP_USERNAME }}/public_html/
+          server-dir: /public_html/
           dry-run: false
           log-level: minimal
