@@ -62,21 +62,16 @@ const Courses = () => {
     )
   }
 
-  const completedLessons = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
-    total + (module.lessons || []).filter(lesson => lesson.progress?.is_completed).length, 0
-  )
-  
-  const totalLessons = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
-    total + (module.lessons || []).length, 0
-  )
-  
+  // Use backend progress data for main stats
+  const completedLessons = progressData?.progress?.completed_lessons ?? 0;
+  const totalLessons = progressData?.progress?.total_lessons ?? 0;
+  const progressPercentage = Number(progressData?.progress?.progress_percentage ?? 0);
+  // Keep totalDuration calculation from modules
   const totalDuration = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
     total + (module.lessons || []).reduce((moduleTotal, lesson) => 
       moduleTotal + (lesson.duration || 0), 0
     ), 0
-  )
-  
-  const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+  );
   
   const toggleModule = (moduleIndex) => {
     setExpandedModules(prev => ({
@@ -158,8 +153,10 @@ const Courses = () => {
                 
                 <VStack spacing={4}>
                   <Box w="full" textAlign="center">
-                    <Text fontSize="4xl" fontWeight="bold">{Math.round(progressData?.completion_percentage || 0)}%</Text>
-                    <Text color="blue.200">{t('courses.courseComplete')}</Text>
+                    <Text fontSize="4xl" fontWeight="bold">{progressPercentage}%</Text>
+                    <Text color="blue.200">
+                      {t('courses.courseComplete')} ({progressPercentage}%)
+                    </Text>
                   </Box>
                   <Box w="full" bg="blue.600" borderRadius="full" h="3">
                     <Box 
@@ -456,31 +453,6 @@ const Courses = () => {
                     </Box>
                   </Grid>
 
-                  <Box w="full" h="1px" bg="gray.200" />
-
-                  <VStack spacing={2} w="full">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700">{t('courses.courseProgress.moduleProgress')}</Text>
-                    {(Array.isArray(modules) ? modules : []).map(module => {
-                      const moduleProgress = (module.lessons || []).filter(l => l.progress?.is_completed).length / (module.lessons || []).length * 100
-                      return (
-                        <Box key={module.id} w="full">
-                          <HStack justify="space-between" mb={1}>
-                            <Text fontSize="xs" color="gray.600">{t('course.module')} {module.id}</Text>
-                            <Text fontSize="xs" color="gray.600">{Math.round(moduleProgress)}%</Text>
-                          </HStack>
-                          <Box bg="gray.200" borderRadius="full" h="1">
-                            <Box 
-                              bg={moduleProgress === 100 ? "green.500" : "blue.500"}
-                              h="full" 
-                              borderRadius="full"
-                              width={`${moduleProgress}%`}
-                              transition="width 0.3s"
-                            />
-                          </Box>
-                        </Box>
-                      )
-                    })}
-                  </VStack>
                 </VStack>
               </Box>
             </Box>
