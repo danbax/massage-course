@@ -1,5 +1,7 @@
+// ...existing code...
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useLanguage } from '../../hooks/useLanguage'
 import iconImage from '../../assets/icon.png'
 import {
   Box,
@@ -30,14 +32,16 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
     navigate('/')
   }
 
+  const { t } = useLanguage()
+
   const navigationItems = [
-    { name: 'Dashboard', href: '/app', icon: FaHome },
-    { name: 'Courses', href: '/app/courses', icon: FaPlayCircle },
-    { name: 'Video', href: '/app/video', icon: FaVideo },
-    { name: 'Progress', href: '/app/progress', icon: FaChartLine },
-    { name: 'Certificate', href: '/app/certificate', icon: FaCertificate },
-    { name: 'Profile', href: '/app/profile', icon: FaUser },
-    { name: 'Settings', href: '/app/settings', icon: FaCog },
+    { name: t('sidebar.dashboard'), href: '/app', icon: FaHome },
+    { name: t('sidebar.courses'), href: '/app/courses', icon: FaPlayCircle },
+    { name: t('sidebar.video'), href: '/app/video', icon: FaVideo },
+    { name: t('sidebar.progress'), href: '/app/progress', icon: FaChartLine },
+    { name: t('sidebar.certificate'), href: '/app/certificate', icon: FaCertificate },
+    { name: t('sidebar.profile'), href: '/app/profile', icon: FaUser },
+    { name: t('sidebar.settings'), href: '/app/settings', icon: FaCog },
   ]
 
   if (!isOpen && isMobile) {
@@ -70,10 +74,10 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           />
           <Box>
             <Text fontSize="lg" fontWeight="bold" color="gray.900">
-              Massage Academy
+              {t('sidebar.academy')}
             </Text>
             <Text fontSize="sm" color="gray.500">
-              Professional Training
+              {t('sidebar.training')}
             </Text>
           </Box>
         </HStack>
@@ -132,10 +136,10 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
             </Box>
             <Box flex={1}>
               <Text fontSize="sm" fontWeight="600" color="gray.900">
-                {user.name || 'User'}
+              {user.name || t('sidebar.user')}
               </Text>
               <Text fontSize="xs" color="gray.500">
-                {user.email || 'user@example.com'}
+              {user.email || t('sidebar.email')}
               </Text>
             </Box>
           </HStack>
@@ -150,7 +154,7 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
             borderRadius="lg"
             onClick={handleLogout}
           >
-            Logout
+            {t('sidebar.logout')}
           </Button>
         </Box>
       )}

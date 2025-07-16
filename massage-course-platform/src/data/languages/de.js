@@ -36,15 +36,19 @@ export const translations = {
     success: 'Erfolg'
   },
 
-  navigation: {
-    home: 'Startseite',
-    courses: 'Kurse',
-    progress: 'Fortschritt',
-    certificates: 'Zertifikate',
+  sidebar: {
     dashboard: 'Dashboard',
-    videoPlayer: 'Videoplayer',
+    courses: 'Kurse',
+    video: 'Video',
+    progress: 'Fortschritt',
+    certificate: 'Zertifikat',
     profile: 'Profil',
-    settings: 'Einstellungen'
+    settings: 'Einstellungen',
+    logout: 'Abmelden',
+    academy: 'Massage Akademie',
+    training: 'Professionelle Ausbildung',
+    user: 'Benutzer',
+    email: 'user@example.com'
   },
 
   landing: {
@@ -922,7 +926,64 @@ export const translations = {
     accountCreated: 'Konto erfolgreich erstellt',
     passwordChanged: 'Passwort erfolgreich geändert',
     profileUpdated: 'Profil erfolgreich aktualisiert'
+  },
+
+  testimonialsData: [
+  {
+    name: "Sarah M.",
+    content: "Mir gefällt sehr, wie er uns anleitet zu üben und die richtigen Fragen stellt, um uns zu verbessern. Endlich habe ich nach Jahren falscher Ausführung die korrekte Handposition gelernt!",
+    avatar: "SM",
+    rating: 5
+  },
+  {
+    name: "Mike T.",
+    content: "Es verändert wirklich alles, wenn man das Körpergewicht statt nur die Hände einsetzt. Meine Kunden merken den Unterschied, und ich bin nach den Sitzungen viel weniger müde.",
+    avatar: "MT",
+    rating: 5
+  },
+  {
+    name: "Emma R.",
+    content: "Die Art, wie er Triggerpunkte erklärt, hat bei mir einen Aha-Effekt ausgelöst. Monatelang kämpfte ich mit der Schulter eines Kunden, und diese Technik löste das Problem in einer Sitzung.",
+    avatar: "ER",
+    rating: 5
+  },
+  {
+    name: "David L.",
+    content: "Die besten 200 $, die ich je ausgegeben habe. Ich wollte die Massagetherapie schon aufgeben, weil meine Handgelenke schmerzten. Diese Techniken haben ehrlich gesagt meine Karriere gerettet.",
+    avatar: "DL",
+    rating: 5
+  },
+  {
+    name: "Jessica H.",
+    content: "Mein Einkommen hat sich verdoppelt, nachdem ich das angewendet habe, was ich hier gelernt habe. Kunden buchen längere Sitzungen und empfehlen mich weiter. Das Deep-Tissue-Modul ist reines Gold.",
+    avatar: "JH",
+    rating: 5
+  },
+  {
+    name: "Carlos M.",
+    content: "Ich dachte, ich wüsste nach 5 Jahren im Feld alles über Massage. Dieser Kurs hat mir gezeigt, dass ich kaum an der Oberfläche gekratzt habe. Ein echter Game-Changer für meine Praxis.",
+    avatar: "CM",
+    rating: 5
+  },
+  {
+    name: "Amanda K.",
+    content: "Endlich hat das Verständnis der Faszienarbeit meine Herangehensweise an jede Sitzung verändert. Meine Stammkunden fragen ständig, was ich anders gemacht habe – genau das habe ich anders gemacht!",
+    avatar: "AK",
+    rating: 5
+  },
+  {
+    name: "Robert S.",
+    content: "Früher brauchte ich 3–4 Sitzungen, um Ergebnisse zu erzielen, die ich jetzt in einer Sitzung erreiche. Meine Kunden sind begeistert, und ich habe durchgehend ausgebucht. Dieser Kurs hat mein Geschäft buchstäblich transformiert.",
+    avatar: "RS",
+    rating: 5
+  },
+  {
+    name: "Lisa P.",
+    content: "Ich hatte Probleme mit Kunden, die unter chronischen Schmerzen litten, bis ich diese Myofascial-Release-Techniken erlernte. Jetzt bin ich ihre Haupttherapeutin, und sie empfehlen mich weiter.",
+    avatar: "LP",
+    rating: 5
   }
+]
 }
 
 export default translations;

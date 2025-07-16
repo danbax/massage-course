@@ -36,15 +36,19 @@ export const translations = {
     success: 'Success'
   },
   
-  navigation: {
-    home: 'Home',
+  sidebar: {
+    dashboard: 'Dashboard',
     courses: 'Courses',
+    video: 'Video',
     progress: 'Progress',
     certificate: 'Certificate',
-    dashboard: 'Dashboard',
-    videoPlayer: 'Video Player',
     profile: 'Profile',
-    settings: 'Settings'
+    settings: 'Settings',
+    logout: 'Logout',
+    academy: 'Massage Academy',
+    training: 'Professional Training',
+    user: 'User',
+    email: 'user@example.com'
   },
 
   landing: {
@@ -913,7 +917,77 @@ export const translations = {
     accountCreated: 'Account created successfully',
     passwordChanged: 'Password changed successfully',
     profileUpdated: 'Profile updated successfully'
-  }
+  },
+  testimonialsData: [
+    {
+      name: "Sarah M.",
+      content: "I love how he guides us to practice and asks the right questions to improve. Finally learned proper hand positioning after years of doing it wrong!",
+      avatar: "SM",
+      rating: 5
+    },
+    {
+      name: "Mike T.",
+      content: "It really changes everything when you use body weight instead of just your hands. My clients notice the difference and I'm way less tired after sessions.",
+      avatar: "MT",
+      rating: 5
+    },
+    {
+      name: "Emma R.",
+      content: "The way he explains trigger points made it click for me. I was struggling with this one client's shoulder issue for months and this technique solved it in one session.",
+      avatar: "ER",
+      rating: 5
+    },
+    {
+      name: "David L.",
+      content: "Best $200 I ever spent. I was about to quit massage therapy because my wrists were killing me. These techniques saved my career, honestly.",
+      avatar: "DL",
+      rating: 5
+    },
+    {
+      name: "Jessica H.",
+      content: "My income doubled after applying what I learned here. Clients are booking longer sessions and referring their friends. The deep tissue module is pure gold.",
+      avatar: "JH",
+      rating: 5
+    },
+    {
+      name: "Carlos M.",
+      content: "I thought I knew massage after 5 years in the field. This course showed me I was barely scratching the surface. Game changer for my practice.",
+      avatar: "CM",
+      rating: 5
+    },
+    {
+      name: "Amanda K.",
+      content: "Finally understanding fascia work changed how I approach every session. My regulars keep asking what I did differently - this is what I did differently!",
+      avatar: "AK",
+      rating: 5
+    },
+    {
+      name: "Robert S.",
+      content: "Used to take me 3-4 sessions to get results that I now achieve in one. My clients are amazed and I'm booked solid. This course literally transformed my business.",
+      avatar: "RS",
+      rating: 5
+    },
+    {
+      name: "Lisa P.",
+      content: "I was struggling with chronic pain clients until I learned these myofascial release techniques. Now I'm their go-to therapist and they refer everyone to me.",
+      avatar: "LP",
+      rating: 5
+    }
+  ],
+    sidebar: {
+    dashboard: 'Dashboard',
+    courses: 'Courses',
+    video: 'Video',
+    progress: 'Progress',
+    certificate: 'Certificate',
+    profile: 'Profile',
+    settings: 'Settings',
+    logout: 'Logout',
+    academy: 'Massage Academy',
+    training: 'Professional Training',
+    user: 'User',
+    email: 'user@example.com',
+  },
 }
 
 export default translations
