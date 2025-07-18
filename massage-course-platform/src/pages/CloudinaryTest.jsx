@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react'
 import CloudinaryVideoNew from '../components/CloudinaryVideoNew'
 import CloudinaryDebug from '../components/CloudinaryDebug'
+import api from '../lib/api'
 import { getCloudinaryVideoUrl, getCloudinaryThumbnailUrl, extractPublicIdFromUrl } from '../config/cloudinary'
 
 const CloudinaryTest = () => {
@@ -43,13 +44,7 @@ const CloudinaryTest = () => {
 
     // Test backend connection
     try {
-      const response = await fetch('/api/cloudinary/test', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Accept': 'application/json'
-        }
-      })
-      const data = await response.json()
+      const data = await api.get('/cloudinary/test')
       results.backendTest = data
     } catch (error) {
       results.backendTest = { success: false, message: error.message }

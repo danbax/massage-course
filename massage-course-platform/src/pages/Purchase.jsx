@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -42,6 +42,8 @@ import {
   FaTimes,
   FaInfoCircle
 } from 'react-icons/fa'
+
+import api from '../lib/api'
 import toast from 'react-hot-toast'
 
 const Purchase = () => {
@@ -55,6 +57,10 @@ const Purchase = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [paymentData, setPaymentData] = useState(null)
   const [paymentStep, setPaymentStep] = useState('form')
+  const [showPaymentIframe, setShowPaymentIframe] = useState(false)
+  const [isIframeLoading, setIsIframeLoading] = useState(false)
+  const [iframeUrl, setIframeUrl] = useState("")
+  const [iframePaymentId, setIframePaymentId] = useState(null)
   const [formData, setFormData] = useState({
     email: user?.email || '',
     first_name: user?.name?.split(' ')[0] || '',
@@ -62,184 +68,42 @@ const Purchase = () => {
     phone: user?.phone || ''
   })
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
+  const iframeId = 'allpay-hosted-fields-iframe'
+  const allpayRef = useRef(null)
 
-  const handlePurchase = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setPaymentStep('processing')
-    setIsPaymentModalOpen(true)
-
-    try {
-      const selectedPlanData = plans.find(p => p.id === selectedPlan)
-      
-      const paymentRequestData = {
-        provider: 'allpay',
-        amount: selectedPlanData.price,
-        plan: selectedPlan,
-        user_data: {
-          email: formData.email,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          phone: formData.phone
-        }
-      }
-
-      const headers = {
-        'Content-Type': 'application/json'
-      }
-
-      if (user?.token) {
-        headers['Authorization'] = `Bearer ${user.token}`
-      }
-
-      const paymentResponse = await fetch('/api/payments/intent', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(paymentRequestData)
-      })
-
-      if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json()
-        throw new Error(errorData.message || 'Payment initialization failed')
-      }
-
-      const responseData = await paymentResponse.json()
-      setPaymentData(responseData)
-      
-      if (responseData.user_created) {
-        toast.success('Account created successfully!')
-      }
-      
-      setPaymentStep('payment')
-      openPaymentPopup(responseData.payment_url, responseData.payment_id)
-
-    } catch (error) {
-      console.error('Purchase process failed:', error)
-      toast.error(error.message || 'Purchase failed. Please try again.')
-      setPaymentStep('form')
-      setIsPaymentModalOpen(false)
-    } finally {
-      setIsLoading(false)
+  const plans = [
+    {
+      id: 'basic',
+      name: 'Basic Course',
+      price: 15,
+      originalPrice: 39,
+      period: 'one-time',
+      features: [
+        '20+ Video Lessons',
+        'Basic Massage Techniques',
+        'Course Materials',
+        'Email Support',
+        '6 Months Access'
+      ],
+      popular: false
+    },
+    {
+      id: 'premium',
+      name: 'Premium Course',
+      price: 20,
+      originalPrice: 49,
+      period: 'one-time',
+      features: [
+        '40+ Video Lessons',
+        'Advanced Techniques',
+        'Professional Certification',
+        'Lifetime Access',
+        'Expert Support',
+        'Downloadable Resources'
+      ],
+      popular: true
     }
-  }
-
-  const openPaymentPopup = (paymentUrl, paymentId) => {
-    const popup = window.open(
-      paymentUrl,
-      'allpay_payment',
-      'width=800,height=700,scrollbars=yes,resizable=yes,status=yes,location=yes'
-    )
-
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed)
-        startPaymentCheck(paymentId)
-      }
-    }, 1000)
-
-    setTimeout(() => {
-      if (!popup.closed) {
-        clearInterval(checkClosed)
-        startPaymentCheck(paymentId)
-      }
-    }, 300000)
-  }
-
-  const startPaymentCheck = (paymentId) => {
-    setIsCheckingPayment(true)
-    
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/payments/status?payment_id=${paymentId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (!response.ok) return
-
-        const data = await response.json()
-        
-        if (data.status === 'succeeded') {
-          clearInterval(interval)
-          setIsCheckingPayment(false)
-          setPaymentStep('success')
-          toast.success('Payment completed successfully!')
-          
-          setTimeout(() => {
-            setIsPaymentModalOpen(false)
-            navigate('/payment-success')
-          }, 3000)
-          return
-        }
-        
-        if (data.status === 'failed' || data.status === 'cancelled') {
-          clearInterval(interval)
-          setIsCheckingPayment(false)
-          setPaymentStep('form')
-          toast.error('Payment was not completed. Please try again.')
-          setIsPaymentModalOpen(false)
-        }
-      } catch (error) {
-        console.error('Payment check failed:', error)
-      }
-    }, 3000)
-
-    setTimeout(() => {
-      clearInterval(interval)
-      setIsCheckingPayment(false)
-      if (paymentStep !== 'success') {
-        setPaymentStep('form')
-        setIsPaymentModalOpen(false)
-        toast.info('Payment check timed out. Please check your payment status manually.')
-      }
-    }, 300000)
-  }
-
-  const handleManualCheck = async () => {
-    if (!paymentData?.payment_id) return
-    
-    setIsCheckingPayment(true)
-    try {
-      const response = await fetch(`/api/payments/status?payment_id=${paymentData.payment_id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        toast.error('Failed to check payment status')
-        return
-      }
-
-      const data = await response.json()
-      
-      if (data.status === 'succeeded') {
-        setPaymentStep('success')
-        toast.success('Payment confirmed! Redirecting...')
-        setTimeout(() => {
-          setIsPaymentModalOpen(false)
-          navigate('/payment-success')
-        }, 2000)
-        return
-      }
-      
-      toast.info(`Payment status: ${data.status}`)
-    } catch (error) {
-      toast.error('Failed to check payment status')
-    } finally {
-      setIsCheckingPayment(false)
-    }
-  }
+  ]
 
   const features = [
     {
@@ -279,43 +143,401 @@ const Purchase = () => {
     }
   ]
 
-  const plans = [
-    {
-      id: 'basic',
-      name: 'Basic Course',
-      price: 15,
-      originalPrice: 39,
-      period: 'one-time',
-      features: [
-        '20+ Video Lessons',
-        'Basic Massage Techniques',
-        'Course Materials',
-        'Email Support',
-        '6 Months Access'
-      ],
-      popular: false
-    },
-    {
-      id: 'premium',
-      name: 'Premium Course',
-      price: 20,
-      originalPrice: 49,
-      period: 'one-time',
-      features: [
-        '40+ Video Lessons',
-        'Advanced Techniques',
-        'Professional Certification',
-        'Lifetime Access',
-        'Expert Support',
-        'Downloadable Resources'
-      ],
-      popular: true
-    }
-  ]
-
-  const PaymentModal = () => {
-    if (!isPaymentModalOpen) return null
+  useEffect(() => {
+    if (!user) return
     
+    setFormData(prev => ({
+      ...prev,
+      email: user.email || prev.email,
+      first_name: user.name?.split(' ')[0] || prev.first_name,
+      last_name: user.name?.split(' ').slice(1).join(' ') || prev.last_name,
+      phone: user.phone || prev.phone
+    }))
+  }, [user])
+
+  useEffect(() => {
+    if (!showPaymentIframe || !iframeUrl) return
+
+    const handleMessage = (event) => {
+      if (event.origin !== 'https://allpay.to') return
+      
+      const { data } = event
+      
+      if (data.type === 'payment_success' || data.status === 'success') {
+        toast.success('Payment success!')
+        setShowPaymentIframe(false)
+        startPaymentCheck(iframePaymentId)
+        return
+      }
+      
+      if (data.type === 'payment_error' || data.status === 'error') {
+        toast.error('Payment error: ' + (data.message || 'Unknown error'))
+        return
+      }
+      
+      if (data.type === 'payment_cancelled' || data.status === 'cancelled') {
+        toast.info('Payment was cancelled')
+        setShowPaymentIframe(false)
+        setIsPaymentModalOpen(false)
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [showPaymentIframe, iframeUrl, iframePaymentId])
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const initializeAllpay = () => {
+    allpayRef.current = new AllpayPayment({
+      iframeId: iframeId,
+      onSuccess: function() {
+        toast.success('Payment success!')
+        setShowPaymentIframe(false)
+        startPaymentCheck(iframePaymentId)
+      },
+      onError: function(error_n, error_msg) {
+        toast.error('Payment error: ' + error_n + ' (' + error_msg + ')')
+      }
+    })
+  }
+
+  const checkPaymentStatus = async (paymentId) => {
+    try {
+      const headers = {}
+      if (user?.token) {
+        headers['Authorization'] = `Bearer ${user.token}`
+      }
+
+      const data = await api.get(`/payments/status?payment_id=${paymentId}`, {
+        headers
+      })
+      return data
+    } catch (error) {
+      console.error('Payment check failed:', error)
+      
+      if (error.status === 404) {
+        toast.error('Payment not found. Please try again.')
+        return null
+      }
+      
+      return null
+    }
+  }
+
+  const startPaymentCheck = (paymentId) => {
+    setIsCheckingPayment(true)
+    
+    const interval = setInterval(async () => {
+      const data = await checkPaymentStatus(paymentId)
+      
+      if (!data) return
+      
+      if (data.status === 'succeeded') {
+        clearInterval(interval)
+        setIsCheckingPayment(false)
+        setPaymentStep('success')
+        toast.success('Payment completed successfully!')
+        
+        setTimeout(() => {
+          setIsPaymentModalOpen(false)
+          navigate('/payment-success')
+        }, 3000)
+        return
+      }
+      
+      if (data.status === 'failed' || data.status === 'cancelled') {
+        clearInterval(interval)
+        setIsCheckingPayment(false)
+        setPaymentStep('form')
+        toast.error('Payment was not completed. Please try again.')
+        setIsPaymentModalOpen(false)
+      }
+    }, 3000)
+
+    setTimeout(() => {
+      clearInterval(interval)
+      setIsCheckingPayment(false)
+      if (paymentStep !== 'success') {
+        setPaymentStep('form')
+        setIsPaymentModalOpen(false)
+        toast.info('Payment check timed out. Please check your payment status manually.')
+      }
+    }, 300000)
+  }
+
+  const handleManualCheck = async () => {
+    if (!paymentData?.payment_id) {
+      toast.error('No payment ID available')
+      return
+    }
+    
+    setIsCheckingPayment(true)
+    
+    try {
+      const data = await checkPaymentStatus(paymentData.payment_id)
+      
+      if (!data) {
+        toast.error('Failed to check payment status')
+        return
+      }
+      
+      if (data.status === 'succeeded') {
+        setPaymentStep('success')
+        toast.success('Payment confirmed! Redirecting...')
+        setTimeout(() => {
+          setIsPaymentModalOpen(false)
+          navigate('/payment-success')
+        }, 2000)
+        return
+      }
+      
+      toast.info(`Payment status: ${data.status}`)
+    } catch (error) {
+      toast.error('Failed to check payment status')
+    } finally {
+      setIsCheckingPayment(false)
+    }
+  }
+
+  const handlePurchase = async (e) => {
+    e.preventDefault()
+    
+    setIsLoading(true)
+
+    try {
+      const selectedPlanData = plans.find(p => p.id === selectedPlan)
+      
+      const paymentRequestData = {
+        provider: 'allpay',
+        amount: selectedPlanData.price,
+        plan: selectedPlan,
+        user_data: {
+          email: formData.email,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone
+        }
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+
+      if (user?.token) {
+        headers['Authorization'] = `Bearer ${user.token}`
+      }
+
+      const paymentResponse = await api.post('/payments/intent', paymentRequestData, {
+        headers
+      })
+
+      setPaymentData(paymentResponse)
+      
+      if (paymentResponse.user_created) {
+        toast.success('Account created successfully!')
+      }
+      
+      if (!paymentResponse.payment_url) {
+        throw new Error('Invalid payment response - no payment URL')
+      }
+      
+      setPaymentStep('payment')
+      setIframeUrl(paymentResponse.payment_url)
+      setIframePaymentId(paymentResponse.payment_id)
+      setIsIframeLoading(true)
+      setShowPaymentIframe(true)
+      setIsPaymentModalOpen(true)
+
+    } catch (error) {
+      console.error('Purchase process failed:', error)
+      toast.error(error.message || 'Purchase failed. Please try again.')
+      setPaymentStep('form')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePaymentExecute = () => {
+    if (!allpayRef.current) {
+      toast.error('Payment system not ready. Please try again.')
+      return
+    }
+    
+    allpayRef.current.pay()
+  }
+
+  const closeModal = () => {
+    setIsPaymentModalOpen(false)
+    setShowPaymentIframe(false)
+  }
+
+  const renderPaymentModal = () => {
+    if (!isPaymentModalOpen) return null
+
+    const getModalContent = () => {
+      if (paymentStep === 'processing') {
+        return (
+          <VStack spacing={4}>
+            <Progress size="lg" isIndeterminate colorScheme="blue" w="full" />
+            <Text textAlign="center" color="gray.600">
+              Setting up your payment with Allpay...
+            </Text>
+          </VStack>
+        )
+      }
+
+      if (paymentStep === 'payment' && showPaymentIframe && iframeUrl) {
+        return (
+          <VStack spacing={4} w="full">
+            <Box w="full" h="280px" borderRadius="lg" overflow="hidden" border="1px solid" borderColor="blue.200" position="relative">
+              {isIframeLoading && (
+                <Flex
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  w="full"
+                  h="280px"
+                  align="center"
+                  justify="center"
+                  bg="whiteAlpha.900"
+                  zIndex={2}
+                >
+                  <VStack spacing={3}>
+                    <Spinner size="xl" color="blue.400" thickness="4px" speed="0.7s" />
+                    <Text color="gray.600">Loading secure payment form...</Text>
+                  </VStack>
+                </Flex>
+              )}
+              <iframe
+                id={iframeId}
+                src={iframeUrl}
+                title="Allpay Payment"
+                width="100%"
+                height="280px"
+                style={{ border: 'none', display: isIframeLoading ? 'none' : 'block' }}
+                allow="payment; camera; microphone; geolocation"
+                sandbox="allow-scripts allow-forms allow-same-origin allow-top-navigation allow-popups"
+                onLoad={() => {
+                  setIsIframeLoading(false)
+                  setTimeout(() => {
+                    initializeAllpay()
+                  }, 100)
+                }}
+                onError={() => {
+                  setIsIframeLoading(false)
+                  toast.error('Failed to load payment form')
+                }}
+              />
+            </Box>
+
+            <Button
+              colorScheme="blue"
+              size="lg"
+              w="full"
+              onClick={handlePaymentExecute}
+              isLoading={isCheckingPayment || isIframeLoading}
+              isDisabled={isCheckingPayment || isIframeLoading}
+            >
+              Pay
+            </Button>
+
+            <VStack spacing={3} w="full">
+              <HStack spacing={2} justify="center">
+                <Circle size="6" bg={isCheckingPayment ? 'blue.500' : 'gray.300'}>
+                  {isCheckingPayment ? (
+                    <Spinner size="xs" color="white" />
+                  ) : (
+                    <Text fontSize="xs" color="white">1</Text>
+                  )}
+                </Circle>
+                <Text fontSize="sm" color={isCheckingPayment ? 'blue.600' : 'gray.500'}>
+                  {isCheckingPayment ? 'Checking payment status...' : 'Complete payment above'}
+                </Text>
+              </HStack>
+            </VStack>
+          </VStack>
+        )
+      }
+
+      if (paymentStep === 'payment' && !showPaymentIframe) {
+        return (
+          <VStack spacing={4}>
+            <Box p={4} bg="blue.50" borderRadius="lg" border="1px solid" borderColor="blue.200" w="full">
+              <HStack spacing={3} align="start">
+                <FaInfoCircle style={{ color: '#3182CE', marginTop: '4px' }} />
+                <VStack align="start" spacing={1} fontSize="sm">
+                  <Text fontWeight="600" color="blue.800">
+                    Complete payment in the window below
+                  </Text>
+                  <Text color="blue.700">
+                    A secure payment window will appear here. Complete your payment below.
+                  </Text>
+                </VStack>
+              </HStack>
+            </Box>
+          </VStack>
+        )
+      }
+
+      if (paymentStep === 'success') {
+        return (
+          <VStack spacing={6} textAlign="center">
+            <Circle size="20" bg="green.100" display="flex" alignItems="center" justifyContent="center">
+              <FaCheckCircle style={{ fontSize: '40px', color: '#38A169' }} />
+            </Circle>
+            <VStack spacing={2}>
+              <Heading size="lg" color="green.600">Payment Successful!</Heading>
+              <Text color="gray.600">
+                Welcome to the Professional Massage Therapy Course!
+              </Text>
+            </VStack>
+            <Box w="full" p={4} bg="green.50" borderRadius="lg" border="1px solid" borderColor="green.200">
+              <VStack spacing={2}>
+                <Text fontWeight="600" color="green.800">
+                  🎉 You now have access to:
+                </Text>
+                <VStack spacing={1} fontSize="sm" color="green.700">
+                  <Text>✓ Professional Video Lessons</Text>
+                  <Text>✓ Downloadable Course Materials</Text>
+                  <Text>✓ Professional Certification</Text>
+                  <Text>✓ Expert Support Community</Text>
+                </VStack>
+              </VStack>
+            </Box>
+            <Text fontSize="sm" color="gray.500">
+              Redirecting to success page in a few seconds...
+            </Text>
+          </VStack>
+        )
+      }
+
+      return null
+    }
+
+    const getModalTitle = () => {
+      if (paymentStep === 'processing') return 'Processing Payment...'
+      if (paymentStep === 'payment') return 'Complete Your Payment'
+      if (paymentStep === 'success') return 'Payment Successful!'
+      return ''
+    }
+
+    const getModalIcon = () => {
+      if (paymentStep === 'processing') return <Spinner size="sm" />
+      if (paymentStep === 'payment') return <FaCreditCard style={{ color: '#3182CE' }} />
+      if (paymentStep === 'success') return <FaCheckCircle style={{ color: '#38A169' }} />
+      return null
+    }
+
     return (
       <Box
         position="fixed"
@@ -342,144 +564,24 @@ const Purchase = () => {
           <Box p={6} borderBottom="1px solid" borderColor="gray.200">
             <Flex alignItems="center" justify="space-between">
               <HStack spacing={3}>
-                {paymentStep === 'processing' && <Spinner size="sm" />}
-                {paymentStep === 'payment' && <Icon as={FaCreditCard} color="blue.500" />}
-                {paymentStep === 'success' && <Icon as={FaCheckCircle} color="green.500" />}
+                {getModalIcon()}
                 <Text fontSize="lg" fontWeight="600">
-                  {paymentStep === 'processing' && 'Processing Payment...'}
-                  {paymentStep === 'payment' && 'Complete Your Payment'}
-                  {paymentStep === 'success' && 'Payment Successful!'}
+                  {getModalTitle()}
                 </Text>
               </HStack>
               {paymentStep !== 'success' && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setIsPaymentModalOpen(false)}
+                  onClick={closeModal}
                 >
-                  <Icon as={FaTimes} />
+                  <FaTimes style={{ color: '#4A5568' }} />
                 </Button>
               )}
             </Flex>
           </Box>
-          
           <Box p={6}>
-            {paymentStep === 'processing' && (
-              <VStack spacing={4}>
-                <Progress size="lg" isIndeterminate colorScheme="blue" w="full" />
-                <Text textAlign="center" color="gray.600">
-                  Setting up your payment with Allpay...
-                </Text>
-              </VStack>
-            )}
-
-            {paymentStep === 'payment' && (
-              <VStack spacing={4}>
-                <Box p={4} bg="blue.50" borderRadius="lg" border="1px solid" borderColor="blue.200" w="full">
-                  <HStack spacing={3} align="start">
-                    <Icon as={FaInfoCircle} color="blue.500" mt={1} />
-                    <VStack align="start" spacing={1} fontSize="sm">
-                      <Text fontWeight="600" color="blue.800">
-                        Complete payment in the popup window
-                      </Text>
-                      <Text color="blue.700">
-                        A secure payment window has opened. Complete your payment there.
-                      </Text>
-                    </VStack>
-                  </HStack>
-                </Box>
-
-                <Box w="full" p={4} bg="gray.50" borderRadius="lg">
-                  <VStack spacing={3}>
-                    <HStack justify="space-between" w="full">
-                      <Text fontWeight="600">Course:</Text>
-                      <Text>{plans.find(p => p.id === selectedPlan)?.name}</Text>
-                    </HStack>
-                    <HStack justify="space-between" w="full">
-                      <Text fontWeight="600">Amount:</Text>
-                      <Text fontSize="lg" fontWeight="700" color="green.600">
-                        ${paymentData?.amount}
-                      </Text>
-                    </HStack>
-                    <HStack justify="space-between" w="full">
-                      <Text fontWeight="600">Provider:</Text>
-                      <Badge colorScheme="blue">Allpay</Badge>
-                    </HStack>
-                  </VStack>
-                </Box>
-
-                {paymentData?.payment_url && (
-                  <Button
-                    as="a"
-                    href={paymentData.payment_url}
-                    target="_blank"
-                    size="lg"
-                    colorScheme="blue"
-                    leftIcon={<FaExternalLinkAlt />}
-                    w="full"
-                  >
-                    Open Payment Window
-                  </Button>
-                )}
-
-                <VStack spacing={3} w="full">
-                  <HStack spacing={2}>
-                    <Circle size="6" bg={isCheckingPayment ? 'blue.500' : 'gray.300'}>
-                      {isCheckingPayment ? (
-                        <Spinner size="xs" color="white" />
-                      ) : (
-                        <Text fontSize="xs" color="white">1</Text>
-                      )}
-                    </Circle>
-                    <Text fontSize="sm" color={isCheckingPayment ? 'blue.600' : 'gray.500'}>
-                      {isCheckingPayment ? 'Checking payment status...' : 'Waiting for payment confirmation'}
-                    </Text>
-                  </HStack>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleManualCheck}
-                    isLoading={isCheckingPayment}
-                    leftIcon={<FaCheck />}
-                  >
-                    Check Payment Status
-                  </Button>
-                </VStack>
-              </VStack>
-            )}
-
-            {paymentStep === 'success' && (
-              <VStack spacing={6} textAlign="center">
-                <Circle size="20" bg="green.100">
-                  <Icon as={FaCheckCircle} boxSize="10" color="green.500" />
-                </Circle>
-                
-                <VStack spacing={2}>
-                  <Heading size="lg" color="green.600">Payment Successful!</Heading>
-                  <Text color="gray.600">
-                    Welcome to the Professional Massage Therapy Course!
-                  </Text>
-                </VStack>
-
-                <Box w="full" p={4} bg="green.50" borderRadius="lg" border="1px solid" borderColor="green.200">
-                  <VStack spacing={2}>
-                    <Text fontWeight="600" color="green.800">
-                      🎉 You now have access to:
-                    </Text>
-                    <VStack spacing={1} fontSize="sm" color="green.700">
-                      <Text>✓ Professional Video Lessons</Text>
-                      <Text>✓ Downloadable Course Materials</Text>
-                      <Text>✓ Professional Certification</Text>
-                      <Text>✓ Expert Support Community</Text>
-                    </VStack>
-                  </VStack>
-                </Box>
-
-                <Text fontSize="sm" color="gray.500">
-                  Redirecting to success page in a few seconds...
-                </Text>
-              </VStack>
-            )}
+            {getModalContent()}
           </Box>
         </Box>
       </Box>
@@ -509,12 +611,14 @@ const Purchase = () => {
             </Link>
             
             <Button
-              leftIcon={<FaArrowLeft />}
               variant="ghost"
               onClick={() => navigate('/')}
               size="sm"
             >
-              {t('common.backToHome')}
+              <HStack spacing={2}>
+                <FaArrowLeft style={{ color: '#4A5568' }} />
+                <Text>{t('common.backToHome')}</Text>
+              </HStack>
             </Button>
           </Flex>
         </Container>
@@ -530,7 +634,7 @@ const Purchase = () => {
               <VStack spacing={6} align="start">
                 <Badge colorScheme="green" fontSize="sm" px={3} py={1} borderRadius="full">
                   <HStack spacing={1}>
-                    <Icon as={FaHeart} w={3} h={3} />
+                    <FaHeart style={{ width: '12px', height: '12px', color: '#E53E3E' }} />
                     <Text>{t('purchase.mostPopularCourse')}</Text>
                   </HStack>
                 </Badge>
@@ -575,13 +679,12 @@ const Purchase = () => {
                           w={10}
                           h={10}
                           bg="blue.100"
-                          color="blue.600"
                           borderRadius="lg"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                         >
-                          <Icon as={feature.icon} w={5} h={5} />
+                          <Icon as={feature.icon} w={5} h={5} color="blue.600" />
                         </Box>
                         <VStack align="start" spacing={1}>
                           <Text fontWeight="600" color="gray.900" fontSize="sm">
@@ -611,7 +714,7 @@ const Purchase = () => {
                       <VStack align="start" spacing={2}>
                         <HStack spacing={1}>
                           {[...Array(testimonial.rating)].map((_, i) => (
-                            <Icon key={i} as={FaStar} color="yellow.400" w={4} h={4} />
+                            <FaStar key={i} style={{ width: '16px', height: '16px', color: '#F6E05E' }} />
                           ))}
                         </HStack>
                         <Text fontSize="sm" color="gray.700" fontStyle="italic">
@@ -647,7 +750,7 @@ const Purchase = () => {
                   <VStack spacing={3} textAlign="center">
                     <Badge colorScheme="red" fontSize="sm" px={3} py={1} borderRadius="full">
                       <HStack spacing={1}>
-                        <Icon as={FaGift} w={3} h={3} />
+                        <FaGift style={{ width: '12px', height: '12px', color: '#E53E3E' }} />
                         <Text>{t('purchase.limitedTimeOffer')}</Text>
                       </HStack>
                     </Badge>
@@ -711,7 +814,7 @@ const Purchase = () => {
                           <VStack align="start" flex={1} spacing={1}>
                             <HStack>
                               <Text fontWeight="600" color="gray.900">{plan.name}</Text>
-                              {plan.popular && <Icon as={FaStar} color="yellow.400" w={4} h={4} />}
+                              {plan.popular && <FaStar style={{ width: '16px', height: '16px', color: '#F6E05E' }} />}
                             </HStack>
                             <HStack spacing={2}>
                               <Text fontSize="2xl" fontWeight="800" color="gray.900">
@@ -730,7 +833,7 @@ const Purchase = () => {
                         <VStack align="start" spacing={1} mt={3} fontSize="sm">
                           {plan.features.map((feature, index) => (
                             <HStack key={index} spacing={2}>
-                              <Icon as={FaCheck} color="green.500" w={3} h={3} />
+                              <FaCheck style={{ width: '12px', height: '12px', color: '#38A169' }} />
                               <Text color="gray.600">{feature}</Text>
                             </HStack>
                           ))}
@@ -818,7 +921,7 @@ const Purchase = () => {
                         type="submit"
                         size="lg"
                         w="full"
-                        bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                        bg={isLoading ? "gray.400" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"}
                         color="white"
                         py={6}
                         fontSize="lg"
@@ -826,18 +929,27 @@ const Purchase = () => {
                         borderRadius="xl"
                         isLoading={isLoading}
                         loadingText="Processing..."
-                        leftIcon={<Icon as={FaCreditCard} />}
-                        _hover={{
+                        spinner={<Spinner size="sm" color="white" />}
+                        isDisabled={isLoading}
+                        _hover={!isLoading ? {
                           transform: 'translateY(-2px)',
                           boxShadow: 'xl',
                           bg: "linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)"
+                        } : {}}
+                        _loading={{
+                          bg: "gray.400",
+                          color: "white",
+                          cursor: "not-allowed"
                         }}
                       >
-                        {user ? 'Purchase Course' : 'Start Learning Now'}
+                        <HStack spacing={2}>
+                          <FaCreditCard style={{ color: 'white' }} />
+                          <Text>Start Learning Now</Text>
+                        </HStack>
                       </Button>
 
                       <HStack spacing={2} justify="center" fontSize="xs" color="gray.500">
-                        <Icon as={FaLock} />
+                        <FaLock style={{ color: '#A0AEC0' }} />
                         <Text>Secure payment via Allpay</Text>
                       </HStack>
                     </VStack>
@@ -849,7 +961,7 @@ const Purchase = () => {
         </Grid>
       </Container>
 
-      <PaymentModal />
+      {renderPaymentModal()}
     </Box>
   )
 }

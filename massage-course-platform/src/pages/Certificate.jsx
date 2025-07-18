@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import api from '../lib/api'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { useCourse } from '../hooks/useCourse'
@@ -72,24 +73,14 @@ const Certificate = () => {
       setIsLoading(true)
       
       // Check if user is eligible for certificate
-      const response = await fetch('/api/certificates/eligibility', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const data = await api.get('/certificates/eligibility')
+      console.log('Eligibility response:', data)
+      setIsEligible(data.eligible)
+      setHasCertificate(data.has_certificate)
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Eligibility response:', data)
-        setIsEligible(data.eligible)
-        setHasCertificate(data.has_certificate)
-
-        // If user has certificate, fetch it
-        if (data.has_certificate) {
-          await fetchCertificate()
-        }
-      } else {
-        console.error('Failed to check eligibility:', response.status)
+      // If user has certificate, fetch it
+      if (data.has_certificate) {
+        await fetchCertificate()
       }
     } catch (error) {
       console.error('Error checking eligibility:', error)
@@ -100,17 +91,9 @@ const Certificate = () => {
 
   const fetchCertificate = async () => {
     try {
-      const response = await fetch('/api/certificates', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.certificates && data.certificates.length > 0) {
-          setCertificate(data.certificates[0])
-        }
+      const data = await api.get('/certificates')
+      if (data.certificates && data.certificates.length > 0) {
+        setCertificate(data.certificates[0])
       }
     } catch (error) {
       console.error('Error fetching certificate:', error)
@@ -123,32 +106,18 @@ const Certificate = () => {
     try {
       setIsGenerating(true)
       
-      const response = await fetch('/api/certificates/generate', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setCertificate(data.certificate)
-        setHasCertificate(true)
-        
-        if (data.message === 'Certificate already exists') {
-          toast.info('Certificate already exists! Downloading now...')
-        } else {
-          toast.success('Certificate generated successfully! Downloading now...')
-        }
-        
-        // Automatically download the certificate PDF
-        setTimeout(() => {
-          downloadCertificatePDF()
-        }, 2000) // Increased delay to ensure DOM is updated
+      const data = await api.post('/certificates/generate')
+      setCertificate(data.certificate)
+      setHasCertificate(true)
+      if (data.message === 'Certificate already exists') {
+        toast.info('Certificate already exists! Downloading now...')
       } else {
-        const errorData = await response.json()
-        toast.error(errorData.message || 'Failed to generate certificate')
+        toast.success('Certificate generated successfully! Downloading now...')
       }
+      // Automatically download the certificate PDF
+      setTimeout(() => {
+        downloadCertificatePDF()
+      }, 2000) // Increased delay to ensure DOM is updated
     } catch (error) {
       console.error('Error generating certificate:', error)
       toast.error('Failed to generate certificate')

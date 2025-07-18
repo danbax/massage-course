@@ -32,7 +32,7 @@ import {
 
 const Dashboard = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const { t } = useLanguage()
   
   const { data: userData, isLoading: userLoading, error: userError } = useCurrentUser()
@@ -53,14 +53,23 @@ const Dashboard = () => {
   }
 
   if (hasError) {
-    return (
-      <Container maxW="7xl" py={8}>
-        <Alert status="error">
-          <Alert.Icon />
-          Failed to load dashboard data. Please try again.
-        </Alert>
-      </Container>
-    )
+    // Try to detect auth error (401 or unauthenticated)
+    const errorObj = userError || progressError || analyticsError || {};
+    const errorMsg = errorObj.message || '';
+    const errorStatus = errorObj.status || errorObj.code || errorObj.statusCode;
+    const isAuthError = errorMsg.toLowerCase().includes('unauth') || errorMsg.includes('401') || errorStatus === 401;
+    if (!isAuthError || isAuthenticated) {
+      return (
+        <Container maxW="7xl" py={8}>
+          <Alert status="error">
+            <Alert.Icon />
+            Failed to load dashboard data. Please try again.
+          </Alert>
+        </Container>
+      )
+    }
+    // If not authenticated and error is auth error, show nothing
+    return null;
   }
 
   const stats = [

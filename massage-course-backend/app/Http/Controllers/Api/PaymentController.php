@@ -46,6 +46,7 @@ class PaymentController extends Controller
 
     public function createPaymentIntent(Request $request): JsonResponse
     {
+        /**
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'plan' => 'required|string|in:basic,premium',
@@ -55,7 +56,7 @@ class PaymentController extends Controller
             'user_data.last_name' => 'required|string|max:255',
             'user_data.phone' => 'required|string|max:20',
         ]);
-
+ */
         $amount = $request->input('amount');
         $plan = $request->input('plan');
         $userData = $request->input('user_data');

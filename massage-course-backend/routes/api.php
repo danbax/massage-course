@@ -144,7 +144,6 @@ Route::prefix('payments')->group(function () {
     Route::post('/allpay/webhook', [PaymentController::class, 'handleAllpayWebhook']);
     
         Route::get('/', [PaymentController::class, 'index']);
-        Route::post('/intent', [PaymentController::class, 'createPaymentIntent']);
         Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
         Route::get('/access', [PaymentController::class, 'checkAccess']);
         Route::get('/test-connection', [PaymentController::class, 'testConnection']);

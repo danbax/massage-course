@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useModules, useProgressOverview } from '../hooks/useApi'
 import { useLanguage } from '../hooks/useLanguage'
+import { useAuth } from '../hooks/useAuth'
 import {
   Box,
   Container,
@@ -33,6 +34,7 @@ import {
 const Courses = () => {
   const navigate = useNavigate()
   const { t } = useLanguage()
+  const { isAuthenticated } = useAuth()
   const [expandedModules, setExpandedModules] = useState({ 0: true })
   
   const { data: modules, isLoading: modulesLoading, error: modulesError } = useModules()
@@ -51,15 +53,25 @@ const Courses = () => {
     )
   }
 
+  // Only show error if not an auth error or if user is authenticated
   if (hasError) {
-    return (
-      <Container maxW="7xl" py={8}>
-        <Alert.Root status="error">
-          <Alert.Icon />
-          <Alert.Title>{t('courses.loadingError')}</Alert.Title>
-        </Alert.Root>
-      </Container>
-    )
+    // Try to detect auth error (401 or unauthenticated)
+    const errorObj = modulesError || progressError || {};
+    const errorMsg = errorObj.message || '';
+    const errorStatus = errorObj.status || errorObj.code || errorObj.statusCode;
+    const isAuthError = errorMsg.toLowerCase().includes('unauth') || errorMsg.includes('401') || errorStatus === 401;
+    if (!isAuthError || isAuthenticated) {
+      return (
+        <Container maxW="7xl" py={8}>
+          <Alert.Root status="error">
+            <Alert.Icon />
+            <Alert.Title>{t('courses.loadingError')}</Alert.Title>
+          </Alert.Root>
+        </Container>
+      )
+    }
+    // If not authenticated and error is auth error, show nothing
+    return null;
   }
 
   // Use backend progress data for main stats

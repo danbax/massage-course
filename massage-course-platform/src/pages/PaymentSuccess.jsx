@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import api from '../lib/api'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -40,19 +41,11 @@ const PaymentSuccess = () => {
       }
 
       try {
-        const response = await fetch('/api/payments/access', {
-          headers: {
-            'Authorization': `Bearer ${user.token}`
-          }
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.has_access) {
-            setPaymentVerified(true)
-          } else {
-            setError('Payment verification pending. Please check your email or contact support.')
-          }
+        const data = await api.get('/payments/access')
+        if (data.has_access) {
+          setPaymentVerified(true)
+        } else {
+          setError('Payment verification pending. Please check your email or contact support.')
         }
       } catch (error) {
         console.error('Payment verification failed:', error)
