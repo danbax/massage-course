@@ -141,7 +141,7 @@ Route::prefix('payments')->group(function () {
     Route::post('/{payment}/refund', [PaymentController::class, 'requestRefund']);
     
     // Webhook routes (no auth middleware - webhooks come from external services)
-    Route::post('/allpay/webhook', [PaymentController::class, 'handleAllpayWebhook']);
+    Route::post('/ ', [PaymentController::class, 'handleAllpayWebhook']);
     
         Route::get('/', [PaymentController::class, 'index']);
         Route::post('/confirm', [PaymentController::class, 'confirmPayment']);

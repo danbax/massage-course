@@ -149,27 +149,7 @@ const SignIn = () => {
                   </Box>
                 )}
 
-                <VStack spacing={3} w="full">
-                  <Button
-                    leftIcon={<FaGoogle />}
-                    w="full"
-                    variant="outline"
-                    borderColor="gray.300"
-                    _hover={{ bg: 'gray.50' }}
-                    isLoading={isLoading}
-                    onClick={() => handleSocialLogin('Google')}
-                  >
-                    {t('auth.signIn.continueWithGoogle')}
-                  </Button>
-                </VStack>
-
-                <HStack w="full">
-                  <Box flex={1} h="1px" bg="gray.200" />
-                  <Text fontSize="sm" color="gray.500" px={3}>
-                    or
-                  </Text>
-                  <Box flex={1} h="1px" bg="gray.200" />
-                </HStack>
+                {/* Removed social login and separator */}
 
                 <Box w="full">
                   <form onSubmit={handleSubmit(onSubmit)}>

@@ -171,7 +171,9 @@ const Purchase = () => {
       }
       
       if (data.type === 'payment_error' || data.status === 'error') {
-        toast.error('Payment error: ' + (data.message || 'Unknown error'))
+        if (!(data.message === 'Authentication token is required' && data.error === 'Unauthenticated')) {
+          toast.error('Payment error: ' + (data.message || 'Unknown error'))
+        }
         return
       }
       
@@ -206,7 +208,9 @@ const Purchase = () => {
         startPaymentCheck(iframePaymentId)
       },
       onError: function(error_n, error_msg) {
-        toast.error('Payment error: ' + error_n + ' (' + error_msg + ')')
+        if (!(error_msg === 'Unauthenticated' || error_n === 'Authentication token is required')) {
+          toast.error('Payment error: ' + error_n + ' (' + error_msg + ')')
+        }
       }
     })
   }
@@ -236,43 +240,70 @@ const Purchase = () => {
 
   const startPaymentCheck = (paymentId) => {
     setIsCheckingPayment(true)
-    
+
+    let autologinDone = false;
     const interval = setInterval(async () => {
+      // Check payment status as before
       const data = await checkPaymentStatus(paymentId)
-      
       if (!data) return
-      
-      if (data.status === 'succeeded') {
-        clearInterval(interval)
-        setIsCheckingPayment(false)
-        setPaymentStep('success')
-        toast.success('Payment completed successfully!')
-        
-        setTimeout(() => {
-          setIsPaymentModalOpen(false)
-          navigate('/payment-success')
-        }, 3000)
-        return
+
+      if (data.status === 'succeeded' && !autologinDone) {
+        autologinDone = true;
+        // Try to get autologin token from webhook endpoint
+        try {
+          const webhookRes = await api.post('/payments/allpay/webhook', {
+            order_id: paymentData.order_id,
+            status: '1',
+            amount: paymentData.amount
+          }, {
+            headers: { 'X-Webhook-Secret': '875B3286184914E0AC9181080AB4ED30' }
+          });
+          if (webhookRes && webhookRes.token) {
+            // Use Zustand auth store to log in
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_token', webhookRes.token);
+            }
+            if (typeof window !== 'undefined') {
+              window.location.href = '/app/courses';
+            }
+            clearInterval(interval);
+            setIsCheckingPayment(false);
+            setPaymentStep('success');
+            toast.success('Payment completed! Logging you in...');
+            return;
+          }
+        } catch (err) {
+          // fallback: just show success
+          setPaymentStep('success');
+          toast.success('Payment completed successfully!');
+          setTimeout(() => {
+            setIsPaymentModalOpen(false);
+            navigate('/payment-success');
+          }, 3000);
+          clearInterval(interval);
+          setIsCheckingPayment(false);
+          return;
+        }
       }
-      
+
       if (data.status === 'failed' || data.status === 'cancelled') {
-        clearInterval(interval)
-        setIsCheckingPayment(false)
-        setPaymentStep('form')
-        toast.error('Payment was not completed. Please try again.')
-        setIsPaymentModalOpen(false)
+        clearInterval(interval);
+        setIsCheckingPayment(false);
+        setPaymentStep('form');
+        toast.error('Payment was not completed. Please try again.');
+        setIsPaymentModalOpen(false);
       }
-    }, 3000)
+    }, 3000);
 
     setTimeout(() => {
-      clearInterval(interval)
-      setIsCheckingPayment(false)
+      clearInterval(interval);
+      setIsCheckingPayment(false);
       if (paymentStep !== 'success') {
-        setPaymentStep('form')
-        setIsPaymentModalOpen(false)
-        toast.info('Payment check timed out. Please check your payment status manually.')
+        setPaymentStep('form');
+        setIsPaymentModalOpen(false);
+        toast.info('Payment check timed out. Please check your payment status manually.');
       }
-    }, 300000)
+    }, 300000);
   }
 
   const handleManualCheck = async () => {
@@ -287,7 +318,7 @@ const Purchase = () => {
       const data = await checkPaymentStatus(paymentData.payment_id)
       
       if (!data) {
-        toast.error('Failed to check payment status')
+        // suppress toast for unauthenticated
         return
       }
       
@@ -303,7 +334,9 @@ const Purchase = () => {
       
       toast.info(`Payment status: ${data.status}`)
     } catch (error) {
-      toast.error('Failed to check payment status')
+      if (!(error?.message === 'Authentication token is required' && error?.error === 'Unauthenticated')) {
+        toast.error('Failed to check payment status')
+      }
     } finally {
       setIsCheckingPayment(false)
     }
@@ -360,7 +393,9 @@ const Purchase = () => {
 
     } catch (error) {
       console.error('Purchase process failed:', error)
-      toast.error(error.message || 'Purchase failed. Please try again.')
+      if (!(error?.message === 'Authentication token is required' && error?.error === 'Unauthenticated')) {
+        toast.error(error.message || 'Purchase failed. Please try again.')
+      }
       setPaymentStep('form')
     } finally {
       setIsLoading(false)

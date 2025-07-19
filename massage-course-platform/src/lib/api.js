@@ -41,20 +41,23 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config)
-      
+
       // Handle unauthorized responses (token expired)
       if (response.status === 401 && token) {
         this.removeAuthToken()
-        
-        // Reload page to trigger auth state reset
         if (typeof window !== 'undefined') {
           window.location.href = '/signin'
         }
         return
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        // Suppress toast for unauthenticated token errors globally
+        if (errorData.message === 'Authentication token is required' && errorData.error === 'Unauthenticated') {
+          // Do not throw, just return errorData for silent handling
+          return errorData
+        }
         throw new ApiError(response.status, errorData.message || 'Request failed', errorData)
       }
 
@@ -62,7 +65,7 @@ class ApiClient {
       if (contentType && contentType.includes('application/json')) {
         return await response.json()
       }
-      
+
       return response
     } catch (error) {
       if (error instanceof ApiError) {

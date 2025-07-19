@@ -32,17 +32,34 @@ class AllpayService
         $this->apiLogin = $apiLogin;
         $this->apiKey = $apiKey;
         $this->apiUrl = config('services.allpay.api_url', 'https://allpay.to/app/?show=getpayment&mode=api8');
-        $this->notificationUrl = config('app.url') . '/api/payments/allpay/webhook';
-        $this->successUrl = config('app.frontend_url', config('app.url')) . '/payment-success';
+        $this->notificationUrl = config('app.url') . '/backend/api/allpay/webhook';
+        $this->successUrl = config('app.frontend_url', config('app.url')) . '/#/signin';
         $this->backUrl = config('app.frontend_url', config('app.url')) . '/purchase';
     }
 
-    public function createPaymentLink(User $user, float $amount, string $currency = 'USD', string $plan = 'premium'): array
+    public function createPaymentLink(User|array $user, float $amount, string $currency = 'USD', string $plan = 'premium'): array
     {
-        $orderId = 'ORDER_' . time() . '_' . $user->id;
-        
+        // Accept either User or array for user info
+        $clientName = '';
+        $clientEmail = '';
+        $clientPhone = '';
+        $orderId = '';
+        if ($user instanceof User) {
+            $clientName = $user->name;
+            $clientEmail = $user->email;
+            $clientPhone = $user->phone ?? '';
+            $orderId = 'ORDER_' . time() . '_' . $user->id;
+        } elseif (is_array($user) && isset($user['email'])) {
+            $clientName = ($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '');
+            $clientEmail = $user['email'];
+            $clientPhone = $user['phone'] ?? '';
+            $orderId = 'ORDER_' . time() . '_' . md5($clientEmail);
+        } else {
+            throw new \Exception('User or user_data required for payment link');
+        }
+
         $courseName = $plan === 'basic' ? 'Basic Massage Course' : 'Premium Massage Course';
-        
+
         $requestData = [
             'login' => $this->apiLogin,
             'order_id' => $orderId,
@@ -59,9 +76,9 @@ class AllpayService
             'notifications_url' => $this->notificationUrl,
             'success_url' => $this->successUrl,
             'backlink_url' => $this->backUrl,
-            'client_name' => $user->name,
-            'client_email' => $user->email,
-            'client_phone' => $user->phone ?? '',
+            'client_name' => $clientName,
+            'client_email' => $clientEmail,
+            'client_phone' => $clientPhone,
             'client_tehudat' => '000000000',
             'expire' => time() + 3600
         ];

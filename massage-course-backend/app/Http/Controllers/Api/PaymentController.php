@@ -62,45 +62,17 @@ class PaymentController extends Controller
         $userData = $request->input('user_data');
         $currency = 'USD';
 
-        $user = $request->user();
-        
-        if ($user) {
-            $existingPayment = $user->payments()->where('status', 'succeeded')->first();
-            if ($existingPayment) {
-                return response()->json([
-                    'message' => 'Already have access to the course'
-                ], 409);
-            }
-        } else {
-            $existingUser = User::where('email', $userData['email'])->first();
-            if ($existingUser) {
-                $existingPayment = $existingUser->payments()->where('status', 'succeeded')->first();
-                if ($existingPayment) {
-                    return response()->json([
-                        'message' => 'User with this email already has course access'
-                    ], 409);
-                }
-                $user = $existingUser;
-            }
-        }
+        // Check if user already exists and has succeeded payment
+        $existingUser = User::where('email', $userData['email'])->first();
 
         try {
             DB::beginTransaction();
 
-            if (!$user) {
-                $user = User::create([
-                    'name' => $userData['first_name'] . ' ' . $userData['last_name'],
-                    'email' => $userData['email'],
-                    'phone' => $userData['phone'],
-                    'password' => Hash::make(Str::random(12)),
-                    'email_verified_at' => now(),
-                ]);
-            }
-
-            $paymentLink = $this->allpayService->createPaymentLink($user, $amount, $currency, $plan);
+            // Do NOT create user here. Only create payment intent.
+            $paymentLink = $this->allpayService->createPaymentLink($userData, $amount, $currency, $plan);
 
             $payment = Payment::create([
-                'user_id' => $user->id,
+                'user_id' => $existingUser?->id,
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'pending',
@@ -127,19 +99,17 @@ class PaymentController extends Controller
                 'provider' => 'allpay',
                 'plan' => $plan,
                 'description' => 'Professional Relaxation Massage Therapy Course',
-                'user_created' => !$request->user(),
-                'user_id' => $user->id
+                'user_created' => false,
+                'user_id' => $existingUser?->id
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
             Log::error('Payment intent creation failed', [
                 'user_data' => $userData,
                 'amount' => $amount,
                 'error' => $e->getMessage()
             ]);
-
             return response()->json([
                 'message' => 'Failed to create payment intent',
                 'error' => $e->getMessage()
@@ -214,17 +184,80 @@ class PaymentController extends Controller
     {
         try {
             $data = $request->all();
-            
             Log::info('Allpay webhook received', $data);
-            
+
+            // Validate webhook secret key
+            $webhookSecret = $request->header('X-Webhook-Secret') ?? $request->input('webhook_secret');
+            if ($webhookSecret !== '875B3286184914E0AC9181080AB4ED30') {
+                Log::warning('Invalid webhook secret', ['received' => $webhookSecret]);
+                return response()->json(['error' => 'Invalid webhook secret'], 403);
+            }
+
+            // Find payment
+            $orderId = $data['order_id'] ?? null;
+            $status = $data['status'] ?? null;
+            $amount = $data['amount'] ?? null;
+            $payment = Payment::where('provider_transaction_id', $orderId)
+                ->where('payment_provider', 'allpay')
+                ->first();
+
+            if (!$payment) {
+                Log::warning('Payment not found for Allpay webhook', ['order_id' => $orderId]);
+                return response()->json(['error' => 'Payment not found'], 404);
+            }
+
+            // Only act on success
+            if ($status == '1' && $payment->status !== Payment::STATUS_SUCCEEDED) {
+                DB::beginTransaction();
+                // Get user data from payment_data
+                $userData = $payment->payment_data['user_data'] ?? null;
+                $user = $payment->user;
+                if (!$user && $userData) {
+                    $user = User::where('email', $userData['email'])->first();
+                    if (!$user) {
+                        $user = User::create([
+                            'name' => ($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? ''),
+                            'email' => $userData['email'],
+                            'phone' => $userData['phone'] ?? '',
+                            'password' => Hash::make(Str::random(12)),
+                            'email_verified_at' => now(),
+                        ]);
+                    }
+                    $payment->user_id = $user->id;
+                    $payment->save();
+                }
+                $payment->update([
+                    'status' => Payment::STATUS_SUCCEEDED,
+                    'processed_at' => now(),
+                    'payment_data' => array_merge($payment->payment_data ?? [], [
+                        'webhook_data' => $data,
+                        'card_mask' => $data['card_mask'] ?? null,
+                        'card_brand' => $data['card_brand'] ?? null,
+                        'foreign_card' => $data['foreign_card'] ?? null,
+                        'receipt' => $data['receipt'] ?? null
+                    ])
+                ]);
+                $user->update(['has_course_access' => true]);
+                DB::commit();
+
+                // Generate login token
+                $token = $user->createToken('autologin')->plainTextToken;
+
+                return response()->json([
+                    'status' => 'success',
+                    'user_id' => $user->id,
+                    'token' => $token,
+                    'redirect' => '/app/courses'
+                ]);
+            }
+
+            // Default: just process webhook as before
             $this->allpayService->processWebhook($data);
-            
             return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
             Log::error('Allpay webhook error: ' . $e->getMessage(), [
                 'data' => $request->all()
             ]);
-            
             return response()->json(['error' => 'Webhook failed'], 400);
         }
     }
