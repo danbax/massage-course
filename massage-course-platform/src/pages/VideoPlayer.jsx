@@ -17,18 +17,18 @@ import {
 } from '@chakra-ui/react'
 import { 
   FaPlay,
-  FaPause,
   FaArrowLeft,
   FaCheck,
-  FaArrowRight,
-  FaVolumeUp,
-  FaExpand,
-  FaCompress
+  FaArrowRight
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 
 const VideoPlayer = () => {
+  console.log('🎬 VideoPlayer component rendered')
+  
   const { moduleId, lessonId } = useParams()
+  console.log('📍 URL params:', { moduleId, lessonId })
+  
   const navigate = useNavigate()
   const { 
     findLessonByCompositeKey, 
@@ -42,18 +42,32 @@ const VideoPlayer = () => {
   } = useCourse()
   const { t, currentLanguage } = useLanguage()
   
-  const videoRef = useRef(null)
-  const containerRef = useRef(null)
+  console.log('🌐 Current language:', currentLanguage)
+  console.log('⏳ Context loading:', contextLoading)
   
-  const [isPlaying, setIsPlaying] = useState(false)
+  const playerRef = useRef(null)
+  const playerInstanceRef = useRef(null)
+  const initTimeoutRef = useRef(null)
+  const hasRestoredProgress = useRef(false)
+  const isPlayingRef = useRef(false)
+  
+  const [player, setPlayer] = useState(null)
+  const [isPlayerReady, setIsPlayerReady] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
-  const [volume, setVolume] = useState(1)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showControls, setShowControls] = useState(true)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [videoError, setVideoError] = useState(false)
+  
+  const [analytics, setAnalytics] = useState({
+    playCount: 0,
+    pauseCount: 0,
+    totalWatchTime: 0,
+    lastPlayTime: 0,
+    hasReachedMidpoint: false,
+    hasReached75Percent: false
+  })
 
   const lesson = findLessonByCompositeKey(
     parseInt(moduleId), 
@@ -61,165 +75,348 @@ const VideoPlayer = () => {
     currentLanguage
   )
   
+  console.log('📖 Lesson lookup result:', lesson?.title || 'null')
+  console.log('- Module ID (parsed):', parseInt(moduleId))
+  console.log('- Lesson ID (parsed):', parseInt(lessonId)) 
+  console.log('- Current language:', currentLanguage)
+  
   const hasValidVideo = lesson?.video_url && lesson.video_url !== null
   const lessonCompositeKey = lesson ? `${lesson.module_id}-${lesson.id}-${lesson.language}` : null
-
-  const handleMouseEnter = useCallback(() => {
-    setShowControls(true)
-  }, [])
-
-  const handleMouseLeave = useCallback(() => {
-    setShowControls(isPlaying ? false : true)
-  }, [isPlaying])
+  
+  console.log('🎥 Video validation:', {
+    hasValidVideo,
+    videoUrl: lesson?.video_url || 'null',
+    lessonCompositeKey
+  })
+  
+  if (lessonCompositeKey && watchProgress[lessonCompositeKey]) {
+    console.log('💾 Existing watch progress:', watchProgress[lessonCompositeKey] + '%')
+  }
 
   useEffect(() => {
-    if (!lesson) return
+    console.log('⏰ Fallback timer useEffect triggered')
+    console.log('- hasValidVideo:', hasValidVideo)
     
+    if (!hasValidVideo) {
+      console.log('❌ No valid video, skipping fallback timer')
+      return
+    }
+    
+    const fallbackTimer = setTimeout(() => {
+      console.log('⚠️ Fallback timer fired after 8 seconds')
+      console.log('- isLoading:', isLoading)
+      console.log('- isPlayerReady:', isPlayerReady) 
+      console.log('- videoError:', videoError)
+      
+      if (isLoading && !isPlayerReady && !videoError) {
+        console.log('📺 Fallback: Setting loading to false')
+        setIsLoading(false)
+        toast('Video loaded (tracking disabled)', { icon: '⚠️' })
+      }
+    }, 8000)
+
+    return () => {
+      console.log('🧹 Cleaning up fallback timer')
+      clearTimeout(fallbackTimer)
+    }
+  }, [hasValidVideo, isLoading, isPlayerReady, videoError])
+
+  useEffect(() => {
+    console.log('🔧 Player initialization useEffect triggered')
+    console.log('- hasValidVideo:', hasValidVideo)
+    console.log('- window.playerjs exists:', !!window.playerjs)
+    console.log('- lesson.video_url:', lesson?.video_url)
+    
+    if (!hasValidVideo || !window.playerjs) {
+      console.log('❌ Skipping player initialization - missing requirements')
+      return
+    }
+    
+    const initializePlayer = () => {
+      console.log('🎬 Starting player initialization...')
+      
+      if (!playerRef.current) {
+        console.log('❌ playerRef.current is null')
+        return
+      }
+      
+      console.log('✅ playerRef.current exists:', playerRef.current)
+      
+      try {
+        console.log('🎯 Creating Player.js instance...')
+        const playerInstance = new window.playerjs.Player(playerRef.current)
+        playerInstanceRef.current = playerInstance
+        setPlayer(playerInstance)
+        console.log('✅ Player instance created successfully')
+
+        playerInstance.on('ready', () => {
+          console.log('🎉 PLAYER READY EVENT FIRED!')
+          setIsPlayerReady(true)
+          setIsLoading(false)
+          setVideoError(false)
+          
+          // Test if player supports timeupdate
+          console.log('🧪 Testing player capabilities...')
+          console.log('- supports timeupdate:', playerInstance.supports && playerInstance.supports('event', 'timeupdate'))
+          console.log('- supports play:', playerInstance.supports && playerInstance.supports('method', 'play'))
+          console.log('- supports getCurrentTime:', playerInstance.supports && playerInstance.supports('method', 'getCurrentTime'))
+          
+          console.log('📏 Getting duration...')
+          playerInstance.getDuration(duration => {
+            console.log('✅ Duration received:', duration)
+            setDuration(duration)
+            
+            // Test getting current time
+            console.log('🧪 Testing getCurrentTime...')
+            playerInstance.getCurrentTime(currentTime => {
+              console.log('⏰ Current time from player:', currentTime)
+            })
+            
+            console.log('🔍 Checking for saved progress...')
+            console.log('- lessonCompositeKey:', lessonCompositeKey)
+            console.log('- watchProgress[key]:', lessonCompositeKey ? watchProgress[lessonCompositeKey] : 'N/A')
+            console.log('- hasRestoredProgress.current:', hasRestoredProgress.current)
+            
+            if (lessonCompositeKey && watchProgress[lessonCompositeKey] > 0 && !hasRestoredProgress.current) {
+              const savedTime = (watchProgress[lessonCompositeKey] / 100) * duration
+              console.log('⏰ Calculated saved time:', savedTime, 'seconds')
+              
+              if (savedTime > 5 && savedTime < duration - 10) {
+                console.log('🔄 Attempting to restore position to:', savedTime)
+                setTimeout(() => {
+                  playerInstance.setCurrentTime(savedTime)
+                  setCurrentTime(savedTime)
+                  setProgress(watchProgress[lessonCompositeKey])
+                  hasRestoredProgress.current = true
+                  console.log('✅ Position restored successfully')
+                  toast.success(`Resumed from ${Math.round(savedTime)}s`)
+                }, 500)
+              } else {
+                console.log('⚠️ Saved time not in valid range, skipping restore')
+              }
+            } else {
+              console.log('ℹ️ No saved progress to restore')
+            }
+          })
+        })
+
+        // Add more event listeners for debugging
+        playerInstance.on('loadstart', () => {
+          console.log('📁 LOADSTART EVENT FIRED')
+        })
+        
+        playerInstance.on('loadeddata', () => {
+          console.log('💿 LOADEDDATA EVENT FIRED')
+        })
+        
+        playerInstance.on('canplay', () => {
+          console.log('▶️ CANPLAY EVENT FIRED')
+        })
+        
+        playerInstance.on('progress', () => {
+          console.log('📊 PROGRESS EVENT FIRED (loading progress)')
+        })
+
+        playerInstance.on('play', () => {
+          console.log('▶️ PLAY EVENT FIRED')
+          setIsPlaying(true)
+          isPlayingRef.current = true
+          setAnalytics(prev => ({ ...prev, playCount: prev.playCount + 1 }))
+          
+          // Try to manually check timeupdate after play starts
+          console.log('🧪 Starting manual timeupdate check...')
+          setTimeout(() => {
+            playerInstance.getCurrentTime(currentTime => {
+              console.log('🕒 Manual getCurrentTime after play:', currentTime)
+            })
+          }, 1000)
+        })
+
+        playerInstance.on('pause', () => {
+          console.log('⏸️ PAUSE EVENT FIRED')
+          setIsPlaying(false)
+          isPlayingRef.current = false
+          setAnalytics(prev => ({ ...prev, pauseCount: prev.pauseCount + 1 }))
+        })
+
+        // Try different possible timeupdate event names
+        playerInstance.on('timeupdate', (timingData) => {
+          console.log('⏱️ TIMEUPDATE EVENT FIRED')
+          console.log('- Raw timingData:', timingData)
+          
+          const currentSeconds = timingData.seconds || 0
+          const totalDuration = timingData.duration || duration
+          
+          console.log('- Parsed currentSeconds:', currentSeconds)
+          console.log('- Parsed totalDuration:', totalDuration)
+          
+          if (totalDuration <= 0) {
+            console.log('⚠️ Invalid duration, skipping timeupdate')
+            return
+          }
+          
+          const progressPercent = (currentSeconds / totalDuration) * 100
+          console.log('- Calculated progress:', progressPercent + '%')
+          
+          setCurrentTime(currentSeconds)
+          setDuration(totalDuration)
+          setProgress(progressPercent)
+          
+          if (lessonCompositeKey) {
+            console.log('💾 Updating watch progress for key:', lessonCompositeKey)
+            updateWatchProgress(lessonCompositeKey, progressPercent)
+          }
+          
+          setAnalytics(prev => {
+            const newAnalytics = { ...prev }
+            
+            if (progressPercent >= 50 && !prev.hasReachedMidpoint) {
+              newAnalytics.hasReachedMidpoint = true
+              console.log('🎯 50% milestone reached!')
+              toast.success('Halfway there! 🎉')
+            }
+            
+            if (progressPercent >= 75 && !prev.hasReached75Percent) {
+              newAnalytics.hasReached75Percent = true
+              console.log('🎯 75% milestone reached!')
+              toast.success('Almost done! 🚀')
+            }
+            
+            return newAnalytics
+          })
+        })
+        
+        // Try alternative event name
+        playerInstance.on('time', (timingData) => {
+          console.log('🕐 TIME EVENT FIRED (alternative)')
+          console.log('- Raw timingData:', timingData)
+        })
+        
+        // Try listening to all events to see what's available
+        const commonEvents = ['ready', 'play', 'pause', 'ended', 'timeupdate', 'progress', 'loadstart', 'loadeddata', 'canplay', 'seeking', 'seeked', 'volumechange', 'error']
+        commonEvents.forEach(eventName => {
+          if (eventName !== 'timeupdate' && eventName !== 'play' && eventName !== 'pause' && eventName !== 'ready' && eventName !== 'progress' && eventName !== 'error' && eventName !== 'ended') {
+            playerInstance.on(eventName, (data) => {
+              console.log(`🎵 ${eventName.toUpperCase()} EVENT FIRED:`, data)
+            })
+          }
+        })
+
+        playerInstance.on('ended', () => {
+          console.log('🏁 VIDEO ENDED EVENT FIRED')
+          setIsPlaying(false)
+          isPlayingRef.current = false
+          if (progress >= 80) {
+            console.log('✅ Progress >= 80%, marking complete')
+            handleMarkComplete()
+            toast.success('🎉 Video completed!')
+          } else {
+            console.log('⚠️ Progress < 80%, not marking complete. Current:', progress)
+          }
+        })
+
+        playerInstance.on('error', (error) => {
+          console.error('❌ PLAYER ERROR EVENT:', error)
+          setVideoError(true)
+          setIsLoading(false)
+          toast.error('Video player error')
+        })
+
+        console.log('👂 All event listeners attached')
+        
+        // Fallback: Manual polling for timeupdate if events don't work
+        console.log('🔄 Starting manual polling as fallback...')
+        const pollInterval = setInterval(() => {
+          if (playerInstanceRef.current && isPlayingRef.current) {
+            playerInstanceRef.current.getCurrentTime(currentTime => {
+              playerInstanceRef.current.getDuration(duration => {
+                if (duration > 0) {
+                  const progressPercent = (currentTime / duration) * 100
+                  console.log('🔄 MANUAL POLL - Time:', currentTime, 'Duration:', duration, 'Progress:', progressPercent + '%')
+                  
+                  setCurrentTime(currentTime)
+                  setDuration(duration)
+                  setProgress(progressPercent)
+                  
+                  if (lessonCompositeKey) {
+                    updateWatchProgress(lessonCompositeKey, progressPercent)
+                  }
+                }
+              })
+            })
+          }
+        }, 1000)
+        
+        // Store interval reference for cleanup
+        playerInstanceRef.current.pollInterval = pollInterval
+
+      } catch (error) {
+        console.error('❌ Player initialization error:', error)
+        setVideoError(true)
+        setIsLoading(false)
+        toast.error('Failed to initialize player')
+      }
+    }
+
+    console.log('⏰ Setting timeout for player initialization (2000ms)')
+    initTimeoutRef.current = setTimeout(initializePlayer, 2000)
+    
+    return () => {
+      console.log('🧹 Cleaning up player initialization timeout')
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current)
+      }
+    }
+  }, [hasValidVideo, lesson?.video_url])
+
+  useEffect(() => {
+    console.log('📚 Lesson change useEffect triggered')
+    console.log('- lesson:', lesson?.title || 'null')
+    console.log('- lesson.video_url:', lesson?.video_url)
+    
+    if (!lesson) {
+      console.log('❌ No lesson found')
+      return
+    }
+    
+    console.log('🔄 Setting current lesson and resetting state')
     setCurrentLesson(lesson)
     setIsLoading(true)
     setVideoError(false)
+    hasRestoredProgress.current = false
+    isPlayingRef.current = false
+    
+    setProgress(0)
+    setCurrentTime(0)
+    setDuration(0)
+    setIsPlaying(false)
+    setIsPlayerReady(false)
+    setAnalytics({
+      playCount: 0,
+      pauseCount: 0,
+      totalWatchTime: 0,
+      lastPlayTime: 0,
+      hasReachedMidpoint: false,
+      hasReached75Percent: false
+    })
+    
+    console.log('✅ State reset completed')
   }, [lesson, setCurrentLesson])
 
   useEffect(() => {
     return () => {
-      if (!lesson || !lessonCompositeKey) return
-      
-      const video = videoRef.current
-      if (!video || !video.duration || video.currentTime <= 0) return
-      
-      const currentProgress = (video.currentTime / video.duration) * 100
-      updateWatchProgress(lessonCompositeKey, currentProgress)
-    }
-  }, [lesson, lessonCompositeKey, updateWatchProgress])
-
-  const handleLoadedMetadata = useCallback(() => {
-    const video = videoRef.current
-    if (!video || !video.duration) return
-    
-    setDuration(video.duration)
-    setVideoError(false)
-  }, [])
-
-  const handleTimeUpdate = useCallback(() => {
-    const video = videoRef.current
-    if (!video || !video.duration || !lessonCompositeKey) return
-    
-    const current = video.currentTime
-    const progressPercent = (current / video.duration) * 100
-    
-    setCurrentTime(current)
-    setProgress(progressPercent)
-    updateWatchProgress(lessonCompositeKey, progressPercent)
-  }, [lessonCompositeKey, updateWatchProgress])
-
-  const handlePlay = useCallback(() => setIsPlaying(true), [])
-  const handlePause = useCallback(() => setIsPlaying(false), [])
-  
-  const handleEnded = useCallback(() => {
-    setIsPlaying(false)
-    const video = videoRef.current
-    if (!video || !video.duration) return
-    
-    const currentProgress = (video.currentTime / video.duration) * 100
-    if (currentProgress >= 80) {
-      toast.success(t('video.videoCompleted'))
-    }
-  }, [t])
-
-  const handleLoadStart = useCallback(() => {
-    setIsLoading(true)
-    setVideoError(false)
-  }, [])
-  
-  const handleCanPlay = useCallback(() => {
-    setIsLoading(false)
-    setVideoError(false)
-  }, [])
-  
-  const handleLoadedData = useCallback(() => {
-    setIsLoading(false)
-    setVideoError(false)
-  }, [])
-
-  const handleError = useCallback((e) => {
-    console.error('Video error:', e)
-    setIsLoading(false)
-    setVideoError(true)
-    toast.error(t('video.errorLoadingVideo'))
-  }, [t])
-
-  useEffect(() => {
-    if (!hasValidVideo) {
-      setIsLoading(false)
-    }
-  }, [hasValidVideo])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !lesson || !duration || !lessonCompositeKey) return
-
-    const savedProgress = watchProgress[lessonCompositeKey]
-    if (!savedProgress || savedProgress <= 0) return
-    
-    const savedTime = (savedProgress / 100) * duration
-    if (Math.abs(video.currentTime - savedTime) <= 1) return
-    
-    video.currentTime = savedTime
-    setCurrentTime(savedTime)
-    setProgress(savedProgress)
-  }, [lesson, lessonCompositeKey, duration, watchProgress])
-
-  const togglePlay = () => {
-    const video = videoRef.current
-    if (!video) return
-
-    if (isPlaying) {
-      video.pause()
-      return
-    }
-    
-    video.play().catch(error => {
-      console.error('Error playing video:', error)
-      toast.error(t('video.unableToPlay'))
-    })
-  }
-
-  const handleSeek = (value) => {
-    const video = videoRef.current
-    if (!video || !duration) return
-    
-    const newTime = (value / 100) * duration
-    video.currentTime = newTime
-    setCurrentTime(newTime)
-    setProgress(value)
-  }
-
-  const handleVolumeChange = (value) => {
-    const video = videoRef.current
-    if (!video) return
-    
-    const newVolume = value / 100
-    video.volume = newVolume
-    setVolume(newVolume)
-  }
-
-  const toggleFullscreen = () => {
-    const container = containerRef.current
-    if (!container) return
-
-    if (!isFullscreen) {
-      if (container.requestFullscreen) {
-        container.requestFullscreen()
+      console.log('🧹 Cleaning up player and intervals')
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current)
       }
-      setIsFullscreen(true)
-      return
+      if (playerInstanceRef.current?.pollInterval) {
+        clearInterval(playerInstanceRef.current.pollInterval)
+      }
+      if (playerInstanceRef.current) {
+        playerInstanceRef.current = null
+      }
     }
-    
-    if (document.exitFullscreen) {
-      document.exitFullscreen()
-    }
-    setIsFullscreen(false)
-  }
+  }, [])
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0:00'
@@ -228,33 +425,40 @@ const VideoPlayer = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleMarkComplete = () => {
+  const handleMarkComplete = useCallback(() => {
     if (!lessonCompositeKey) return
     
-    if (progress >= 80) {
-      markLessonComplete(lessonCompositeKey)
-      toast.success(t('video.lessonCompleted'))
+    if (progress < 80) {
+      toast.error('Watch at least 80% to complete')
       return
     }
     
-    toast.error(t('video.watchMoreToComplete'))
-  }
+    markLessonComplete(lessonCompositeKey)
+    toast.success('Lesson completed!')
+    
+    console.log('Lesson completed:', {
+      lessonId: lesson?.id,
+      progress: progress,
+      watchTime: analytics.totalWatchTime,
+      playCount: analytics.playCount
+    })
+  }, [lessonCompositeKey, progress, markLessonComplete, lesson, analytics])
 
   const handleNextLesson = () => {
     if (!lesson) return
     
     const nextLesson = getNextLesson(lesson.module_id, lesson.id, currentLanguage)
     
-    if (nextLesson) {
-      navigate(`/app/video/${nextLesson.module_id}/${nextLesson.id}`)
-    }
+    if (!nextLesson) return
+    
+    navigate(`/app/video/${nextLesson.module_id}/${nextLesson.id}`)
   }
 
   if (contextLoading) {
     return (
       <Container maxW="6xl">
         <Box textAlign="center" py={20}>
-          <Heading color="gray.500">{t('video.loadingLesson')}</Heading>
+          <Heading color="gray.500">Loading lesson...</Heading>
         </Box>
       </Container>
     )
@@ -264,17 +468,31 @@ const VideoPlayer = () => {
     return (
       <Container maxW="6xl">
         <Box textAlign="center" py={20}>
-          <Heading color="gray.500">{t('video.lessonNotFound')}</Heading>
+          <Heading color="gray.500">Lesson not found</Heading>
           <Text color="gray.500" mt={2}>
             Module {moduleId}, Lesson {lessonId} in {currentLanguage}
           </Text>
           <Button mt={4} onClick={() => navigate('/app/courses')}>
-            {t('common.backToHome')}
+            Back to Home
           </Button>
         </Box>
       </Container>
     )
   }
+
+  const videoUrl = `https://iframe.mediadelivery.net/embed/469615/${lesson.video_url}?t=${Date.now()}`
+  
+  console.log('📺 Video URL generated:', videoUrl)
+  console.log('🔍 Current state:', {
+    hasValidVideo,
+    isLoading,
+    isPlayerReady,
+    videoError,
+    progress: Math.round(progress),
+    duration: Math.round(duration),
+    currentTime: Math.round(currentTime),
+    isPlaying
+  })
 
   return (
     <Container maxW="6xl">
@@ -285,7 +503,7 @@ const VideoPlayer = () => {
           alignSelf="flex-start"
           onClick={() => navigate('/app/courses')}
         >
-          {t('video.backToCourses')}
+          Back to Courses
         </Button>
 
         <Box 
@@ -296,234 +514,111 @@ const VideoPlayer = () => {
           borderColor="gray.100"
           overflow="hidden"
         >
-          <Box 
-            ref={containerRef}
-            position="relative"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
-            {hasValidVideo && !videoError ? (
-              <video
-                ref={videoRef}
-                src={lesson.video_url}
-                poster={lesson.thumbnail}
-                controls={false}
-                onLoadedMetadata={handleLoadedMetadata}
-                onTimeUpdate={handleTimeUpdate}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onEnded={handleEnded}
-                onLoadStart={handleLoadStart}
-                onCanPlay={handleCanPlay}
-                onLoadedData={handleLoadedData}
-                onError={handleError}
-                style={{ 
-                  width: '100%',
-                  height: '500px',
-                  objectFit: 'cover',
-                  backgroundColor: '#000',
-                  display: 'block'
+          {hasValidVideo && !videoError ? (
+            <Box 
+              position="relative" 
+              w="100%" 
+              paddingTop="56.25%" 
+              bg="#000" 
+              borderRadius="2xl" 
+              overflow="hidden"
+            >
+              <iframe
+                ref={playerRef}
+                src={videoUrl}
+                loading="lazy"
+                allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture"
+                allowFullScreen
+                style={{
+                  border: 0,
+                  position: 'absolute',
+                  top: 0,
+                  height: '100%',
+                  width: '100%'
                 }}
-                preload="metadata"
-                playsInline
+                title="BunnyCDN Video Player"
+                onLoad={() => {
+                  console.log('📺 Iframe onLoad event fired')
+                  setIsLoading(false)
+                }}
+                onError={() => {
+                  console.error('❌ Iframe onError event fired')
+                  setVideoError(true)
+                  setIsLoading(false)
+                  toast.error('Failed to load video')
+                }}
               />
-            ) : (
-              <Box
-                width="100%"
-                height="500px"
-                bg="gray.100"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                flexDirection="column"
-                gap={4}
-              >
+              
+              {isLoading && (
                 <Box
-                  width="80px"
-                  height="80px"
-                  bg="gray.300"
-                  borderRadius="full"
+                  position="absolute"
+                  top="0"
+                  left="0"
+                  right="0"
+                  bottom="0"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
+                  color="white"
+                  textAlign="center"
+                  zIndex={997}
+                  bg="rgba(0, 0, 0, 0.8)"
                 >
-                  <Icon as={FaPlay} w={8} h={8} color="gray.600" />
-                </Box>
-                <VStack spacing={2}>
-                  <Text fontSize="lg" fontWeight="medium" color="gray.600">
-                    {videoError ? t('video.errorLoadingVideo') : t('video.videoNotAvailable')}
-                  </Text>
-                  <Text fontSize="sm" color="gray.500" textAlign="center">
-                    {videoError 
-                      ? 'Please check the video URL and try again'
-                      : t('video.videoNotAvailableDesc')
-                    }
-                  </Text>
-                </VStack>
-              </Box>
-            )}
-
-            {isLoading && hasValidVideo && !videoError && (
-              <Box
-                position="absolute"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                color="white"
-                textAlign="center"
-                zIndex={997}
-                bg="rgba(0, 0, 0, 0.5)"
-              >
-                <Box bg="rgba(0, 0, 0, 0.8)" px={6} py={4} borderRadius="md">
-                  <Text fontSize="lg">{t('video.loading')}</Text>
-                </Box>
-              </Box>
-            )}
-
-            {!isPlaying && !isLoading && hasValidVideo && !videoError && (
-              <Box
-                position="absolute"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                zIndex={999}
-                pointerEvents="none"
-              >
-                <Button
-                  onClick={togglePlay}
-                  size="lg"
-                  borderRadius="full"
-                  bg="rgba(255, 255, 255, 0.9)"
-                  color="blue.500"
-                  boxShadow="0 4px 20px rgba(0, 0, 0, 0.3)"
-                  w={20}
-                  h={20}
-                  fontSize="2xl"
-                  _hover={{ 
-                    transform: 'scale(1.1)',
-                    bg: 'white'
-                  }}
-                  transition="all 0.2s"
-                  aria-label={t('video.controls.play')}
-                  pointerEvents="all"
-                  minW="auto"
-                  p={0}
-                >
-                  <Icon as={FaPlay} />
-                </Button>
-              </Box>
-            )}
-
-            {hasValidVideo && !videoError && (
-              <Box
-                position="absolute"
-                bottom={0}
-                left={0}
-                right={0}
-                bg="linear-gradient(transparent, rgba(0, 0, 0, 0.7))"
-                color="white"
-                p={4}
-                opacity={showControls ? 1 : 0}
-                transition="opacity 0.3s"
-                zIndex={998}
-                pointerEvents={showControls ? "all" : "none"}
-              >
-                <VStack spacing={3}>
-                  <Box w="full">
-                    <Box
-                      bg="whiteAlpha.300"
-                      h="2"
-                      borderRadius="full"
-                      cursor="pointer"
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        const clickX = e.clientX - rect.left
-                        const percentage = (clickX / rect.width) * 100
-                        handleSeek(percentage)
+                  <VStack spacing={3}>
+                    <Box 
+                      width="40px" 
+                      height="40px" 
+                      border="3px solid rgba(255,255,255,0.3)"
+                      borderTopColor="white"
+                      borderRadius="50%"
+                      sx={{
+                        animation: 'spin 1s linear infinite',
+                        '@keyframes spin': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' }
+                        }
                       }}
-                    >
-                      <Box
-                        bg="blue.400"
-                        h="full"
-                        borderRadius="full"
-                        width={`${progress}%`}
-                        transition="width 0.1s"
-                      />
-                    </Box>
-                  </Box>
-
-                  <HStack spacing={4} w="full" justify="space-between">
-                    <HStack spacing={3}>
-                      <Button
-                        onClick={togglePlay}
-                        variant="ghost"
-                        color="white"
-                        size="sm"
-                        _hover={{ bg: "whiteAlpha.200" }}
-                        aria-label={isPlaying ? t('video.controls.pause') : t('video.controls.play')}
-                        minW="auto"
-                        p={2}
-                      >
-                        <Icon as={isPlaying ? FaPause : FaPlay} />
-                      </Button>
-
-                      <Text fontSize="sm" minW="100px">
-                        {formatTime(currentTime)} / {formatTime(duration)}
-                      </Text>
-                    </HStack>
-
-                    <HStack spacing={3}>
-                      <HStack spacing={2} w="100px">
-                        <Icon as={FaVolumeUp} w={4} h={4} />
-                        <Box
-                          bg="whiteAlpha.300"
-                          h="1"
-                          borderRadius="full"
-                          cursor="pointer"
-                          flex="1"
-                          onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            const clickX = e.clientX - rect.left
-                            const percentage = (clickX / rect.width) * 100
-                            handleVolumeChange(percentage)
-                          }}
-                        >
-                          <Box
-                            bg="white"
-                            h="full"
-                            borderRadius="full"
-                            width={`${volume * 100}%`}
-                            transition="width 0.1s"
-                          />
-                        </Box>
-                      </HStack>
-
-                      <Button
-                        onClick={toggleFullscreen}
-                        variant="ghost"
-                        color="white"
-                        size="sm"
-                        _hover={{ bg: "whiteAlpha.200" }}
-                        aria-label={isFullscreen ? t('video.controls.exitFullscreen') : t('video.controls.fullscreen')}
-                        minW="auto"
-                        p={2}
-                      >
-                        <Icon as={isFullscreen ? FaCompress : FaExpand} />
-                      </Button>
-                    </HStack>
-                  </HStack>
-                </VStack>
+                    />
+                    <Text fontSize="lg">Loading video...</Text>
+                  </VStack>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Box
+              width="100%"
+              height="500px"
+              bg="gray.100"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              flexDirection="column"
+              gap={4}
+            >
+              <Box
+                width="80px"
+                height="80px"
+                bg="gray.300"
+                borderRadius="full"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Icon as={FaPlay} w={8} h={8} color="gray.600" />
               </Box>
-            )}
-          </Box>
+              <VStack spacing={2}>
+                <Text fontSize="lg" fontWeight="medium" color="gray.600">
+                  {videoError ? 'Error loading video' : 'Video not available'}
+                </Text>
+                <Text fontSize="sm" color="gray.500" textAlign="center">
+                  {videoError 
+                    ? 'Please check the video URL and try again'
+                    : 'This lesson does not have a video'
+                  }
+                </Text>
+              </VStack>
+            </Box>
+          )}
         </Box>
 
         <Box
@@ -551,13 +646,13 @@ const VideoPlayer = () => {
                     >
                       <HStack spacing={1}>
                         <Icon as={FaCheck} w={3} h={3} />
-                        <Text fontWeight="bold">{t('course.completed')}</Text>
+                        <Text fontWeight="bold">Completed</Text>
                       </HStack>
                     </Badge>
                   )}
                   {lessonCompositeKey && watchProgress[lessonCompositeKey] > 0 && !lesson.completed && (
                     <Badge colorScheme="blue" variant="solid" fontSize="xs">
-                      {Math.round(watchProgress[lessonCompositeKey])}% {t('progress.lessonProgress.watched')}
+                      {Math.round(watchProgress[lessonCompositeKey])}% watched
                     </Badge>
                   )}
                 </HStack>
@@ -576,7 +671,7 @@ const VideoPlayer = () => {
                   isDisabled={progress < 80 || lesson.completed}
                   colorScheme={lesson.completed ? 'green' : 'blue'}
                 >
-                  {lesson.completed ? t('course.completed') : t('course.markComplete')}
+                  {lesson.completed ? 'Completed' : 'Mark Complete'}
                 </Button>
                 
                 <Button
@@ -585,14 +680,14 @@ const VideoPlayer = () => {
                   onClick={handleNextLesson}
                   isDisabled={!getNextLesson(lesson.module_id, lesson.id, currentLanguage)}
                 >
-                  {t('course.nextLesson')}
+                  Next Lesson
                 </Button>
               </HStack>
             </Flex>
-
+            
             <Box>
               <Flex justify="space-between" align="center" mb={2}>
-                <Text fontSize="sm" color="gray.600">{t('video.watchProgress')}</Text>
+                <Text fontSize="sm" color="gray.600">Watch Progress</Text>
                 <Text fontSize="sm" fontWeight="medium">{Math.round(progress)}%</Text>
               </Flex>
               <Box bg="gray.200" h="2" borderRadius="full">
@@ -606,10 +701,22 @@ const VideoPlayer = () => {
               </Box>
               {progress < 80 && (
                 <Text fontSize="xs" color="gray.500" mt={2}>
-                  {t('video.watchAtLeast')}
+                  Watch at least 80% to mark lesson as complete
                 </Text>
               )}
             </Box>
+
+            {process.env.NODE_ENV === 'development' && isPlayerReady && (
+              <Box mt={4} p={3} bg="gray.50" borderRadius="md">
+                <Text fontSize="xs" fontWeight="bold" mb={2}>📊 Debug Info</Text>
+                <HStack spacing={4} fontSize="xs" color="gray.600">
+                  <Text>Time: {formatTime(currentTime)}/{formatTime(duration)}</Text>
+                  <Text>Progress: {Math.round(progress)}%</Text>
+                  <Text>Playing: {isPlaying ? '▶️' : '⏸️'}</Text>
+                  <Text>Ready: {isPlayerReady ? '✅' : '❌'}</Text>
+                </HStack>
+              </Box>
+            )}
           </Box>
         </Box>
       </VStack>
