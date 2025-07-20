@@ -41,12 +41,24 @@ import {
   FaGlobe
 } from 'react-icons/fa'
 
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 const LandingPage = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const { t } = useLanguage()
+  const { t, currentLanguage, changeLanguage } = useLanguage()
   const isMobile = useBreakpointValue({ base: true, md: false })
   const [currentSlide, setCurrentSlide] = useState(0)
+
+  // Language from URL param
+  const location = useLocation()
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const lang = params.get('lang')
+    if (lang && lang !== currentLanguage) {
+      changeLanguage(lang)
+    }
+  }, [location.search, currentLanguage, changeLanguage])
 
   const handleStartTrial = () => {
     navigate('/purchase')

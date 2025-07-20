@@ -46,10 +46,19 @@ import {
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 
+import { useLocation } from 'react-router-dom'
 const Purchase = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, currentLanguage, changeLanguage } = useLanguage()
+  const location = useLocation()
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const lang = params.get('lang')
+    if (lang && lang !== currentLanguage) {
+      changeLanguage(lang)
+    }
+  }, [location.search, currentLanguage, changeLanguage])
   
   const [selectedPlan, setSelectedPlan] = useState('premium')
   const [isLoading, setIsLoading] = useState(false)

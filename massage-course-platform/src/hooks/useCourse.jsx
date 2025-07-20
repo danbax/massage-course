@@ -76,7 +76,7 @@ export const CourseProvider = ({ children }) => {
         
       } catch (error) {
         console.error('Failed to load course data:', error)
-        toast.error('Failed to load course data')
+        //toast.error('Failed to load course data')
         
         // Initialize empty state on error
         setModules([])

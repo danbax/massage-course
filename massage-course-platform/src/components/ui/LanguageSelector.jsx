@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Box,
@@ -18,6 +19,8 @@ const LanguageSelector = ({ size = 'sm', variant = 'ghost' }) => {
   const availableLanguages = getAvailableLanguages()
   const currentLangConfig = languageConfig[currentLanguage]
   const menuRef = useRef(null)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   console.log('Available languages:', availableLanguages)
   console.log('Current language config:', currentLangConfig)
@@ -30,6 +33,10 @@ const LanguageSelector = ({ size = 'sm', variant = 'ghost' }) => {
 
   const handleLanguageChange = (langCode) => {
     changeLanguage(langCode)
+    // Update lang param in URL
+    const params = new URLSearchParams(location.search)
+    params.set('lang', langCode)
+    navigate({ search: params.toString() }, { replace: true })
     setIsOpen(false)
   }
 
