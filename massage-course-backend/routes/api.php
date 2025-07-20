@@ -10,14 +10,15 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CloudinaryController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
-    Route::post('password/forgot', [AuthController::class, 'forgotPassword']);
-    Route::post('password/reset', [AuthController::class, 'resetPassword']);
+    Route::post('password/forgot', [ForgotPasswordController::class, 'forgot']);
+    Route::post('password/reset', [ForgotPasswordController::class, 'reset']);
 });
 
 Route::get('certificates/verify/{code}', [CertificateController::class, 'verify'])

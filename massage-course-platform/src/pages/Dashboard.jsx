@@ -8,17 +8,16 @@ import {
   Container,
   Grid,
   Card,
-  CardBody,
   Heading,
   Text,
   VStack,
   HStack,
   Progress,
-  Icon,
   Button,
   Flex,
   Spinner,
-  Alert
+  Alert,
+  Icon
 } from '@chakra-ui/react'
 import { 
   FaPlayCircle,
@@ -53,7 +52,6 @@ const Dashboard = () => {
   }
 
   if (hasError) {
-    // Try to detect auth error (401 or unauthenticated)
     const errorObj = userError || progressError || analyticsError || {};
     const errorMsg = errorObj.message || '';
     const errorStatus = errorObj.status || errorObj.code || errorObj.statusCode;
@@ -61,14 +59,13 @@ const Dashboard = () => {
     if (!isAuthError || isAuthenticated) {
       return (
         <Container maxW="7xl" py={8}>
-          <Alert status="error">
-            <Alert.Icon />
-            Failed to load dashboard data. Please try again.
-          </Alert>
+          <Alert.Root status="error">
+            <Alert.Indicator />
+            <Alert.Title>Failed to load dashboard data. Please try again.</Alert.Title>
+          </Alert.Root>
         </Container>
       )
     }
-    // If not authenticated and error is auth error, show nothing
     return null;
   }
 
@@ -138,15 +135,15 @@ const Dashboard = () => {
 
   return (
     <Container maxW="7xl">
-      <VStack spacing={8} align="stretch">
+      <VStack gap={8} align="stretch">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card bg="linear-gradient(135deg, #0ea5e9, #a855f7)" color="white">
-            <CardBody p={8}>
+          <Card.Root bg="linear-gradient(135deg, #0ea5e9, #a855f7)" color="white">
+            <Card.Body p={8}>
               <Flex justify="space-between" align="center">
-                <VStack align="start" spacing={2}>
+                <VStack align="start" gap={2}>
                   <Heading size="lg">
                     {t('dashboard.welcomeBack')}, {user?.name}! 👋
                   </Heading>
@@ -158,7 +155,9 @@ const Dashboard = () => {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                 >
-                  <Icon as={FaFire} w={16} h={16} color="orange.300" display={{ base: "none", md: "block" }} />
+                  <Icon color="orange.300" display={{ base: "none", md: "block" }}>
+                    <FaFire size="64px" />
+                  </Icon>
                 </motion.div>
               </Flex>
 
@@ -167,10 +166,14 @@ const Dashboard = () => {
                   <Text fontSize="sm" fontWeight="medium">{t('dashboard.overallProgress')}</Text>
                   <Text fontSize="sm" fontWeight="medium">{completionPercentage}%</Text>
                 </Flex>
-                <Progress value={completionPercentage} colorScheme="whiteAlpha" bg="blue.600" />
+                <Progress.Root value={completionPercentage} colorPalette="whiteAlpha">
+                  <Progress.Track bg="blue.600">
+                    <Progress.Range />
+                  </Progress.Track>
+                </Progress.Root>
               </Box>
-            </CardBody>
-          </Card>
+            </Card.Body>
+          </Card.Root>
         </motion.div>
 
         <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }} gap={6}>
@@ -181,10 +184,10 @@ const Dashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card _hover={{ transform: 'translateY(-4px)', shadow: '2xl' }} transition="all 0.3s">
-                <CardBody p={6}>
+              <Card.Root _hover={{ transform: 'translateY(-4px)', shadow: '2xl' }} transition="all 0.3s">
+                <Card.Body p={6}>
                   <Flex justify="space-between" align="center">
-                    <VStack align="start" spacing={1}>
+                    <VStack align="start" gap={1}>
                       <Text fontSize="sm" fontWeight="medium" color="gray.600">
                         {stat.name}
                       </Text>
@@ -205,22 +208,24 @@ const Dashboard = () => {
                       alignItems="center"
                       justifyContent="center"
                     >
-                      <Icon as={stat.icon} w={6} h={6} />
+                      <Icon>
+                        <stat.icon size="24px" />
+                      </Icon>
                     </Box>
                   </Flex>
-                </CardBody>
-              </Card>
+                </Card.Body>
+              </Card.Root>
             </motion.div>
           ))}
         </Grid>
 
         <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
-          <Card>
-            <CardBody p={6}>
+          <Card.Root>
+            <Card.Body p={6}>
               <Heading size="md" color="gray.900" mb={6}>
                 {t('dashboard.recentActivity.title')}
               </Heading>
-              <VStack spacing={4} align="stretch">
+              <VStack gap={4} align="stretch">
                 {recentActivity.map((activity, index) => (
                   <motion.div
                     key={activity.id}
@@ -228,7 +233,7 @@ const Dashboard = () => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                   >
-                    <HStack spacing={4} p={4} borderRadius="lg" _hover={{ bg: "gray.50" }} transition="colors">
+                    <HStack gap={4} p={4} borderRadius="lg" _hover={{ bg: "gray.50" }} transition="colors">
                       <Box
                         w={10}
                         h={10}
@@ -239,9 +244,11 @@ const Dashboard = () => {
                         justifyContent="center"
                         color={`${activity.color}.500`}
                       >
-                        <Icon as={activity.icon} w={5} h={5} />
+                        <Icon>
+                          <activity.icon size="20px" />
+                        </Icon>
                       </Box>
-                      <VStack align="start" spacing={0} flex={1}>
+                      <VStack align="start" gap={0} flex={1}>
                         <Text fontSize="sm" fontWeight="medium" color="gray.900">
                           {activity.title}
                         </Text>
@@ -253,17 +260,16 @@ const Dashboard = () => {
                   </motion.div>
                 ))}
               </VStack>
-            </CardBody>
-          </Card>
+            </Card.Body>
+          </Card.Root>
 
-          <Card>
-            <CardBody p={6}>
+          <Card.Root>
+            <Card.Body p={6}>
               <Heading size="md" color="gray.900" mb={6}>
                 {t('dashboard.quickActions.title')}
               </Heading>
-              <VStack spacing={3} align="stretch">
+              <VStack gap={3} align="stretch">
                 <Button
-                  leftIcon={<FaPlay />}
                   bg="blue.50"
                   color="blue.700"
                   _hover={{ bg: "blue.100" }}
@@ -271,10 +277,12 @@ const Dashboard = () => {
                   p={3}
                   onClick={handleContinueLearning}
                 >
+                  <Icon mr={2}>
+                    <FaPlay />
+                  </Icon>
                   {t('dashboard.quickActions.continueLearning')}
                 </Button>
                 <Button
-                  leftIcon={<FaBookOpen />}
                   bg="purple.50"
                   color="purple.700"
                   _hover={{ bg: "purple.100" }}
@@ -282,10 +290,12 @@ const Dashboard = () => {
                   p={3}
                   onClick={() => navigate('/app/courses')}
                 >
+                  <Icon mr={2}>
+                    <FaBookOpen />
+                  </Icon>
                   {t('dashboard.quickActions.viewAllCourses')}
                 </Button>
                 <Button
-                  leftIcon={<FaTrophy />}
                   bg="green.50"
                   color="green.700"
                   _hover={{ bg: "green.100" }}
@@ -293,11 +303,14 @@ const Dashboard = () => {
                   p={3}
                   onClick={() => navigate('/app/certificates')}
                 >
+                  <Icon mr={2}>
+                    <FaTrophy />
+                  </Icon>
                   {t('dashboard.quickActions.viewCertificates')}
                 </Button>
               </VStack>
-            </CardBody>
-          </Card>
+            </Card.Body>
+          </Card.Root>
         </Grid>
       </VStack>
     </Container>

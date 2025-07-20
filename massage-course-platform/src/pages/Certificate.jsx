@@ -72,13 +72,11 @@ const Certificate = () => {
     try {
       setIsLoading(true)
       
-      // Check if user is eligible for certificate
       const data = await api.get('/certificates/eligibility')
       console.log('Eligibility response:', data)
       setIsEligible(data.eligible)
       setHasCertificate(data.has_certificate)
 
-      // If user has certificate, fetch it
       if (data.has_certificate) {
         await fetchCertificate()
       }
@@ -114,10 +112,9 @@ const Certificate = () => {
       } else {
         toast.success('Certificate generated successfully! Downloading now...')
       }
-      // Automatically download the certificate PDF
       setTimeout(() => {
         downloadCertificatePDF()
-      }, 2000) // Increased delay to ensure DOM is updated
+      }, 2000)
     } catch (error) {
       console.error('Error generating certificate:', error)
       toast.error('Failed to generate certificate')
@@ -137,33 +134,45 @@ const Certificate = () => {
     try {
       setIsDownloading(true)
       
-      // Get the certificate element
-      const certificateElement = document.getElementById('certificate-template')
-      console.log('Certificate element found:', !!certificateElement)
+      const certificatePreview = document.querySelector('[data-certificate-preview]')
+      console.log('Certificate preview found:', !!certificatePreview)
       
-      if (!certificateElement) {
-        toast.error('Certificate template not found')
+      if (!certificatePreview) {
+        toast.error('Certificate preview not found')
         return
       }
 
-      console.log('Generating canvas from certificate element...')
-      // Generate canvas from the certificate element
-      const canvas = await html2canvas(certificateElement, {
+      const originalTransform = certificatePreview.style.transform
+      const originalWidth = certificatePreview.style.width
+      const originalHeight = certificatePreview.style.height
+      
+      certificatePreview.style.transform = 'scale(1)'
+      certificatePreview.style.width = '1056px'
+      certificatePreview.style.height = '816px'
+      
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      console.log('Generating canvas from certificate preview...')
+      const canvas = await html2canvas(certificatePreview, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        width: 1056,
+        height: 816
       })
 
+      certificatePreview.style.transform = originalTransform
+      certificatePreview.style.width = originalWidth
+      certificatePreview.style.height = originalHeight
+
       console.log('Canvas generated, creating PDF...')
-      // Create PDF
       const pdf = new jsPDF('landscape', 'mm', 'a4')
-      const imgWidth = 297 // A4 landscape width in mm
+      const imgWidth = 297
       const imgHeight = (canvas.height * imgWidth) / canvas.width
 
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
       
-      // Download the PDF
       const fileName = `Certificate_${user.name.replace(/\s+/g, '_')}_${new Date().getFullYear()}.pdf`
       console.log('Downloading PDF:', fileName)
       pdf.save(fileName)
@@ -195,7 +204,6 @@ const Certificate = () => {
         boxShadow="0 4px 20px rgba(0,0,0,0.1)"
         overflow="hidden"
       >
-        {/* Background Pattern */}
         <Box
           position="absolute"
           top="0"
@@ -205,7 +213,6 @@ const Certificate = () => {
           bgGradient="linear(45deg, #f7fafc 0%, #edf2f7 100%)"
         />
         
-        {/* Decorative Border */}
         <Box
           position="absolute"
           top="20px"
@@ -228,7 +235,6 @@ const Certificate = () => {
           borderRadius="md"
         />
 
-        {/* Header */}
         <VStack spacing={6} pt="60px" position="relative" zIndex={1}>
           <Box
             w="80px"
@@ -259,7 +265,6 @@ const Certificate = () => {
           </VStack>
         </VStack>
 
-        {/* Main Content */}
         <VStack spacing={8} mt="40px" px="80px" position="relative" zIndex={1}>
           <Text fontSize="20px" color="gray.700" textAlign="center" lineHeight="1.6">
             This is to certify that
@@ -315,7 +320,6 @@ const Certificate = () => {
           </VStack>
         </VStack>
 
-        {/* Footer */}
         <Flex
           position="absolute"
           bottom="60px"
@@ -358,13 +362,12 @@ const Certificate = () => {
               Massage Academy Director
             </Text>
             <Text fontSize="18px" fontWeight="600" color="gray.800">
-              Dr. Sarah Johnson
+              Daniel Bachnov
             </Text>
             <Box w="150px" h="1px" bg="gray.400" />
           </VStack>
         </Flex>
 
-        {/* Certificate Number */}
         <Text
           position="absolute"
           bottom="20px"
@@ -396,7 +399,6 @@ const Certificate = () => {
     <Box bg="gray.50" minH="100vh" py={8}>
       <Container maxW="6xl">
         <VStack spacing={8}>
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -416,7 +418,6 @@ const Certificate = () => {
             </Center>
           </motion.div>
 
-          {/* Status Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -432,7 +433,7 @@ const Certificate = () => {
               textAlign="center"
             >
               <VStack spacing={4}>
-                {completedLessons >= 1 ? (
+                {isEligible ? (
                   <>
                     <HStack spacing={2}>
                       <Icon as={FaCheck} color="green.500" />
@@ -441,7 +442,7 @@ const Certificate = () => {
                       </Badge>
                     </HStack>
                     <Text color="gray.600">
-                      Congratulations! You've completed {completedLessons} lesson{completedLessons !== 1 ? 's' : ''} and are eligible for your certificate.
+                      Congratulations! You are eligible for your certificate.
                     </Text>
                   </>
                 ) : (
@@ -457,7 +458,7 @@ const Certificate = () => {
                       <HStack spacing={3}>
                         <Icon as={FaCheck} color="blue.500" />
                         <VStack align="start" spacing={1}>
-                          <Text fontWeight="600" color="blue.800">Complete at least 1 lesson to earn your certificate</Text>
+                          <Text fontWeight="600" color="blue.800">Complete all required lessons to earn your certificate</Text>
                           <Text fontSize="sm" color="blue.700">
                             Start watching lessons to unlock your official certificate of completion.
                           </Text>
@@ -470,7 +471,6 @@ const Certificate = () => {
             </Box>
           </motion.div>
 
-          {/* Certificate Actions */}
           {(completedLessons >= 1 || hasCertificate) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -478,25 +478,26 @@ const Certificate = () => {
               transition={{ delay: 0.2 }}
             >
               <VStack spacing={6}>
-                {!hasCertificate ? (                    <Button
-                      size="lg"
-                      colorScheme="blue"
-                      leftIcon={<FaAward />}
-                      onClick={generateCertificate}
-                      isLoading={isGenerating}
-                      loadingText="Generating & downloading..."
-                      px={8}
-                      py={6}
-                      fontSize="lg"
-                      borderRadius="xl"
-                      boxShadow="lg"
-                      _hover={{
-                        transform: 'translateY(-2px)',
-                        boxShadow: 'xl'
-                      }}
-                    >
-                      Generate & Download Certificate
-                    </Button>
+                {!hasCertificate ? (
+                  <Button
+                    size="lg"
+                    colorScheme="blue"
+                    leftIcon={<FaAward />}
+                    onClick={generateCertificate}
+                    isLoading={isGenerating}
+                    loadingText="Generating & downloading..."
+                    px={8}
+                    py={6}
+                    fontSize="lg"
+                    borderRadius="xl"
+                    boxShadow="lg"
+                    _hover={{
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'xl'
+                    }}
+                  >
+                    Generate & Download Certificate
+                  </Button>
                 ) : (
                   <HStack spacing={4}>
                     <Button
@@ -524,7 +525,6 @@ const Certificate = () => {
             </motion.div>
           )}
 
-          {/* Certificate Preview */}
           {hasCertificate && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -537,6 +537,7 @@ const Certificate = () => {
                 </Heading>
                 
                 <Box
+                  data-certificate-preview
                   transform="scale(0.7)"
                   transformOrigin="center"
                   borderRadius="lg"
@@ -550,157 +551,6 @@ const Certificate = () => {
           )}
         </VStack>
       </Container>
-      
-      {/* Hidden certificate template for PDF generation */}
-      {(hasCertificate || certificate) && (
-        <Box 
-          position="absolute" 
-          left="-9999px" 
-          top="-9999px"
-          visibility="hidden"
-        >
-          <Box
-            id="certificate-template"
-            width="1056px"
-            height="816px"
-            bg="white"
-            position="relative"
-            margin="0 auto"
-            boxShadow="0 4px 20px rgba(0,0,0,0.1)"
-            overflow="hidden"
-          >
-            {/* Background Pattern */}
-            <Box
-              position="absolute"
-              top="0"
-              left="0"
-              right="0"
-              bottom="0"
-              bgGradient="linear(45deg, #f7fafc 0%, #edf2f7 100%)"
-            />
-            
-            {/* Decorative Border */}
-            <Box
-              position="absolute"
-              top="20px"
-              left="20px"
-              right="20px"
-              bottom="20px"
-              border="3px solid"
-              borderColor="blue.500"
-              borderRadius="lg"
-            />
-            
-            <Box
-              position="absolute"
-              top="30px"
-              left="30px"
-              right="30px"
-              bottom="30px"
-              border="1px solid"
-              borderColor="blue.300"
-              borderRadius="md"
-            />
-
-            {/* Content */}
-            <VStack spacing={8} justify="center" h="full" px={16} py={12} position="relative" zIndex={1}>
-              {/* Header */}
-              <VStack spacing={4} textAlign="center">
-                <Heading fontSize="48px" fontWeight="800" color="blue.600" letterSpacing="wide">
-                  CERTIFICATE
-                </Heading>
-                <Text fontSize="24px" color="gray.600" fontWeight="500">
-                  OF COMPLETION
-                </Text>
-              </VStack>
-
-              {/* Recipient */}
-              <VStack spacing={4} textAlign="center">
-                <Text fontSize="18px" color="gray.700">
-                  This is to certify that
-                </Text>
-                <Heading fontSize="36px" fontWeight="700" color="gray.900" borderBottom="2px solid" borderColor="blue.500" pb={2}>
-                  {user?.name || 'Student Name'}
-                </Heading>
-                <Text fontSize="18px" color="gray.700">
-                  has successfully completed the
-                </Text>
-              </VStack>
-
-              {/* Course Title */}
-              <VStack spacing={2} textAlign="center">
-                <Heading fontSize="28px" fontWeight="600" color="blue.600">
-                  Professional Relaxation Massage Therapy Course
-                </Heading>
-                <Text fontSize="16px" color="gray.600">
-                  A comprehensive training program in massage therapy techniques
-                </Text>
-              </VStack>
-
-              {/* Details */}
-              <HStack spacing={12} justify="center">
-                <VStack spacing={2}>
-                  <Text fontSize="14px" color="gray.500" fontWeight="500">
-                    CERTIFICATE NUMBER
-                  </Text>
-                  <Text fontSize="16px" color="gray.800" fontWeight="600">
-                    {certificate?.certificate_number || 'MT-2025-0001'}
-                  </Text>
-                </VStack>
-                <VStack spacing={2}>
-                  <Text fontSize="14px" color="gray.500" fontWeight="500">
-                    DATE ISSUED
-                  </Text>
-                  <Text fontSize="16px" color="gray.800" fontWeight="600">
-                    {new Date().toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </Text>
-                </VStack>
-              </HStack>
-
-              {/* Signature Section */}
-              <Flex justify="space-between" align="end" w="full" pt={8}>
-                <VStack spacing={2}>
-                  <Box
-                    w="80px"
-                    h="80px"
-                    borderRadius="full"
-                    border="3px solid"
-                    borderColor="blue.500"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    bg="blue.50"
-                  >
-                    <Icon as={FaAward} w="30px" h="30px" color="blue.600" />
-                  </Box>
-                  <Text fontSize="12px" color="gray.500" textAlign="center">
-                    Official Seal
-                  </Text>
-                </VStack>
-                
-                <VStack spacing={2}>
-                  <Text fontSize="16px" color="gray.600">
-                    Massage Academy Director
-                  </Text>
-                  <Text fontSize="18px" fontWeight="600" color="gray.800">
-                    Dr. Sarah Johnson
-                  </Text>
-                  <Box w="150px" h="1px" bg="gray.400" />
-                </VStack>
-              </Flex>
-
-              {/* Verification Code */}
-              <Text fontSize="12px" color="gray.500" position="absolute" bottom="20px" right="30px">
-                Verification Code: {certificate?.verification_code || 'ABC123XYZ'}
-              </Text>
-            </VStack>
-          </Box>
-        </Box>
-      )}
     </Box>
   )
 }

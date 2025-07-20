@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import SignIn from './pages/SignIn'
 import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Register from './pages/Register'
 import LearnMore from './pages/LearnMore'
 import Purchase from './pages/Purchase'
@@ -82,6 +83,7 @@ const AppContent = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/learn-more" element={<LearnMore />} />
             <Route path="/purchase" element={<Purchase />} />

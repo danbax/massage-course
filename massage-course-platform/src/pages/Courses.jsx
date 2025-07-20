@@ -13,11 +13,11 @@ import {
   VStack,
   HStack,
   Button,
-  Icon,
   Badge,
   Spinner,
   Alert,
-  Flex
+  Flex,
+  Icon
 } from '@chakra-ui/react'
 import { 
   FaPlay,
@@ -53,9 +53,7 @@ const Courses = () => {
     )
   }
 
-  // Only show error if not an auth error or if user is authenticated
   if (hasError) {
-    // Try to detect auth error (401 or unauthenticated)
     const errorObj = modulesError || progressError || {};
     const errorMsg = errorObj.message || '';
     const errorStatus = errorObj.status || errorObj.code || errorObj.statusCode;
@@ -64,21 +62,18 @@ const Courses = () => {
       return (
         <Container maxW="7xl" py={8}>
           <Alert.Root status="error">
-            <Alert.Icon />
+            <Alert.Indicator />
             <Alert.Title>{t('courses.loadingError')}</Alert.Title>
           </Alert.Root>
         </Container>
       )
     }
-    // If not authenticated and error is auth error, show nothing
     return null;
   }
 
-  // Use backend progress data for main stats
   const completedLessons = progressData?.progress?.completed_lessons ?? 0;
   const totalLessons = progressData?.progress?.total_lessons ?? 0;
   const progressPercentage = Number(progressData?.progress?.progress_percentage ?? 0);
-  // Keep totalDuration calculation from modules
   const totalDuration = (Array.isArray(modules) ? modules : []).reduce((total, module) => 
     total + (module.lessons || []).reduce((moduleTotal, lesson) => 
       moduleTotal + (lesson.duration || 0), 0
@@ -125,7 +120,7 @@ const Courses = () => {
 
   return (
     <Container maxW="7xl">
-      <VStack spacing={8} align="stretch">
+      <VStack gap={8} align="stretch">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,7 +134,7 @@ const Courses = () => {
           >
             <Box p={8}>
               <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={8} alignItems="center">
-                <VStack align="start" spacing={4}>
+                <VStack align="start" gap={4}>
                   <Heading size="xl">
                     {t('courses.title')}
                   </Heading>
@@ -147,23 +142,23 @@ const Courses = () => {
                     {t('courses.subtitle')}
                   </Text>
                   
-                  <HStack spacing={6} pt={2}>
-                    <VStack align="start" spacing={1}>
+                  <HStack gap={6} pt={2}>
+                    <VStack align="start" gap={1}>
                       <Text fontSize="2xl" fontWeight="bold">{totalLessons}</Text>
                       <Text fontSize="sm" color="blue.200">{t('courses.totalLessons')}</Text>
                     </VStack>
-                    <VStack align="start" spacing={1}>
+                    <VStack align="start" gap={1}>
                       <Text fontSize="2xl" fontWeight="bold">{completedLessons}</Text>
                       <Text fontSize="sm" color="blue.200">{t('courses.completed')}</Text>
                     </VStack>
-                    <VStack align="start" spacing={1}>
+                    <VStack align="start" gap={1}>
                       <Text fontSize="2xl" fontWeight="bold">{Math.floor(totalDuration / 60)}h {totalDuration % 60}m</Text>
                       <Text fontSize="sm" color="blue.200">{t('courses.totalTime')}</Text>
                     </VStack>
                   </HStack>
                 </VStack>
                 
-                <VStack spacing={4}>
+                <VStack gap={4}>
                   <Box w="full" textAlign="center">
                     <Text fontSize="4xl" fontWeight="bold">{progressPercentage}%</Text>
                     <Text color="blue.200">
@@ -186,12 +181,12 @@ const Courses = () => {
         </motion.div>
 
         <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
-          <VStack spacing={6} align="stretch">
+          <VStack gap={6} align="stretch">
             <Heading size="lg" color="gray.900">
               {t('courses.courseModules')}
             </Heading>
             
-            <VStack spacing={4}>
+            <VStack gap={4}>
               {modules?.map((module, moduleIndex) => {
                 const lessons = module.lessons || []
                 const moduleProgress = lessons.filter(l => l.progress?.is_completed).length / lessons.length * 100
@@ -212,27 +207,31 @@ const Courses = () => {
                     >
                       <Box flex="1" textAlign="left">
                         <HStack justify="space-between">
-                          <VStack align="start" spacing={1}>
+                          <VStack align="start" gap={1}>
                             <Text fontSize="sm" color="blue.600" fontWeight="medium">
                               {t('course.module')} {module.id}
                             </Text>
                             <Heading size="md" color="gray.900">
                               {module.name}
                             </Heading>
-                            <HStack spacing={4} fontSize="sm" color="gray.500">
-                              <HStack spacing={1}>
-                                <Icon as={FaBookOpen} w={3} h={3} />
+                            <HStack gap={4} fontSize="sm" color="gray.500">
+                              <HStack gap={1}>
+                                <Icon>
+                                  <FaBookOpen size="12px" />
+                                </Icon>
                                 <Text>{lessons.length} {t('course.lessons')}</Text>
                               </HStack>
-                              <HStack spacing={1}>
-                                <Icon as={FaClock} w={3} h={3} />
+                              <HStack gap={1}>
+                                <Icon>
+                                  <FaClock size="12px" />
+                                </Icon>
                                 <Text>{lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)} {t('courses.lesson.minutes')}</Text>
                               </HStack>
                             </HStack>
                           </VStack>
-                          <VStack align="end" spacing={2}>
+                          <VStack align="end" gap={2}>
                             <Badge
-                              colorScheme={moduleProgress === 100 ? 'green' : moduleProgress > 0 ? 'blue' : 'gray'}
+                              colorPalette={moduleProgress === 100 ? 'green' : moduleProgress > 0 ? 'blue' : 'gray'}
                               fontSize="xs"
                             >
                               {moduleCompleted}/{lessons.length} {t('courses.completed')}
@@ -246,7 +245,9 @@ const Courses = () => {
                                 transition="width 0.3s"
                               />
                             </Box>
-                            <Icon as={isExpanded ? FaChevronUp : FaChevronDown} w={4} h={4} color="gray.400" />
+                            <Icon color="gray.400">
+                              {isExpanded ? <FaChevronUp size="16px" /> : <FaChevronDown size="16px" />}
+                            </Icon>
                           </VStack>
                         </HStack>
                       </Box>
@@ -254,7 +255,7 @@ const Courses = () => {
                     
                     {isExpanded && (
                       <Box pb={4} pt={0} px={6}>
-                      <VStack spacing={3} align="stretch">
+                      <VStack gap={3} align="stretch">
                         {lessons.map((lesson, lessonIndex) => {
                           const status = getLessonStatus(lesson, moduleIndex, lessonIndex)
                           
@@ -287,7 +288,7 @@ const Courses = () => {
                                 ml={4}
                               >
                                 <Box p={4}>
-                                  <HStack spacing={3}>
+                                  <HStack gap={3}>
                                     <Box
                                       w={8}
                                       h={8}
@@ -305,25 +306,35 @@ const Courses = () => {
                                       }
                                     >
                                       {status === 'completed' ? (
-                                        <Icon as={FaCheck} w={4} h={4} />
+                                        <Icon>
+                                          <FaCheck size="16px" />
+                                        </Icon>
                                       ) : status === 'locked' ? (
-                                        <Icon as={FaLock} w={3} h={3} />
+                                        <Icon>
+                                          <FaLock size="12px" />
+                                        </Icon>
                                       ) : (
-                                        <Icon as={FaPlay} w={3} h={3} />
+                                        <Icon>
+                                          <FaPlay size="12px" />
+                                        </Icon>
                                       )}
                                     </Box>
                                     
-                                    <VStack align="start" flex={1} spacing={1}>
+                                    <VStack align="start" flex={1} gap={1}>
                                       <Text fontWeight="medium" color="gray.900" fontSize="sm">
                                         {lesson.title}
                                       </Text>
-                                      <HStack spacing={3} fontSize="xs" color="gray.500">
-                                        <HStack spacing={1}>
-                                          <Icon as={FaClock} w={2} h={2} />
+                                      <HStack gap={3} fontSize="xs" color="gray.500">
+                                        <HStack gap={1}>
+                                          <Icon>
+                                            <FaClock size="8px" />
+                                          </Icon>
                                           <Text>{lesson.duration} {t('courses.lesson.minutes')}</Text>
                                         </HStack>
-                                        <HStack spacing={1}>
-                                          <Icon as={FaVideo} w={2} h={2} />
+                                        <HStack gap={1}>
+                                          <Icon>
+                                            <FaVideo size="8px" />
+                                          </Icon>
                                           <Text>{t('courses.lesson.hdVideo')}</Text>
                                         </HStack>
                                       </HStack>
@@ -350,7 +361,7 @@ const Courses = () => {
                                     
                                     <Button
                                       size="xs"
-                                      colorScheme={status === 'completed' ? 'green' : 'blue'}
+                                      colorPalette={status === 'completed' ? 'green' : 'blue'}
                                       variant={status === 'completed' ? 'outline' : 'solid'}
                                     >
                                       {status === 'completed' ? t('courses.lesson.rewatch') : t('courses.lesson.start')}
@@ -370,7 +381,7 @@ const Courses = () => {
             </VStack>
           </VStack>
 
-          <VStack spacing={6} align="stretch">
+          <VStack gap={6} align="stretch">
             <Box
               bg="white"
               borderRadius="xl"
@@ -382,9 +393,8 @@ const Courses = () => {
                 <Heading size="md" color="gray.900" mb={4}>
                   {t('courses.quickActions.title')}
                 </Heading>
-                <VStack spacing={3} align="stretch">
+                <VStack gap={3} align="stretch">
                   <Button
-                    leftIcon={<FaPlay />}
                     bg="blue.50"
                     color="blue.700"
                     _hover={{ bg: "blue.100" }}
@@ -396,26 +406,33 @@ const Courses = () => {
                       }
                     }}
                   >
+                    <Icon mr={2}>
+                      <FaPlay />
+                    </Icon>
                     {t('courses.quickActions.continueLearning')}
                   </Button>
                   <Button
-                    leftIcon={<FaGraduationCap />}
                     bg="purple.50"
                     color="purple.700"
                     _hover={{ bg: "purple.100" }}
                     justifyContent="flex-start"
                     onClick={() => navigate('/app/certificates')}
                   >
+                    <Icon mr={2}>
+                      <FaGraduationCap />
+                    </Icon>
                     {t('courses.quickActions.viewCertificates')}
                   </Button>
                   <Button
-                    leftIcon={<FaCheck />}
                     bg="green.50"
                     color="green.700"
                     _hover={{ bg: "green.100" }}
                     justifyContent="flex-start"
                     onClick={() => navigate('/app/progress')}
                   >
+                    <Icon mr={2}>
+                      <FaCheck />
+                    </Icon>
                     {t('courses.quickActions.trackProgress')}
                   </Button>
                 </VStack>
@@ -433,7 +450,7 @@ const Courses = () => {
                 <Heading size="md" color="gray.900" mb={4}>
                   {t('courses.courseProgress.title')}
                 </Heading>
-                <VStack spacing={4}>
+                <VStack gap={4}>
                   <Box w="full">
                     <HStack justify="space-between" mb={2}>
                       <Text fontSize="sm" color="gray.600">{t('courses.courseProgress.overallProgress')}</Text>

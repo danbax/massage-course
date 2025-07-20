@@ -29,7 +29,7 @@ const ForgotPassword = () => {
   const onSubmit = async (data) => {
     setIsSubmitting(true)
     try {
-      const response = await fetch('/backend/api/password/forgot', {
+      const response = await fetch('/api/auth/password/forgot', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

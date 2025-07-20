@@ -20,9 +20,9 @@ import {
   IconButton,
   Badge,
   SimpleGrid,
-  useBreakpointValue,
-  Icon
+  useBreakpointValue
 } from '@chakra-ui/react'
+import { Icon } from '@chakra-ui/react'
 import { 
   FaPlay, 
   FaGraduationCap, 
@@ -42,6 +42,7 @@ import {
 } from 'react-icons/fa'
 
 import { useEffect } from 'react'
+import ReactGA from 'react-ga4';
 import { useLocation } from 'react-router-dom'
 const LandingPage = () => {
   const navigate = useNavigate()
@@ -61,7 +62,13 @@ const LandingPage = () => {
   }, [location.search, currentLanguage, changeLanguage])
 
   const handleStartTrial = () => {
-    navigate('/purchase')
+    ReactGA.event({
+      category: 'LandingPage',
+      action: 'Click',
+      label: 'Enroll Now Button',
+      nonInteraction: false
+    });
+    navigate('/purchase');
   }
 
   const features = [
@@ -174,7 +181,9 @@ const LandingPage = () => {
                     {t('landing.brand.name')}
                   </Text>
                   <Text fontSize="xs" color="gray.500" fontWeight="500">
+                  <span style={{ color: '#0ea5e9', fontWeight: 700 }}>
                     {t('landing.brand.tagline')}
+                  </span>
                   </Text>
                 </Box>
               </HStack>
@@ -245,16 +254,16 @@ const LandingPage = () => {
               <VStack align="start" spacing={{ base: 4, md: 6 }}>
                 <Box>
                   <Badge 
-                    colorScheme="primary" 
-                    fontSize="xs" 
-                    px={2} 
-                    py={1} 
+                    colorScheme="primary"
+                    fontSize="xs"
+                    px={2}
+                    py={1}
                     borderRadius="full"
                     mb={3}
-                    bg="gradient-primary"
-                    color="white"
+                    bg="white"
+                    color="#0ea5e9"
                   >
-                    🏆 {t('landing.badges.topCourse')}
+                    🏆 <span style={{ color: '#0ea5e9', fontWeight: 700 }}>{t('landing.badges.topCourse')}</span>
                   </Badge>
                   <Heading
                     fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }}
@@ -314,7 +323,15 @@ const LandingPage = () => {
                     fontWeight="600"
                     borderRadius="xl"
                     borderColor="gray.300"
-                    onClick={() => navigate('/learn-more')}
+                    onClick={() => {
+                      ReactGA.event({
+                        category: 'LandingPage',
+                        action: 'Click',
+                        label: 'Learn More Button',
+                        nonInteraction: false
+                      });
+                      navigate('/learn-more');
+                    }}
                     _hover={{
                       borderColor: "primary.400",
                       bg: "primary.50",
@@ -398,18 +415,6 @@ const LandingPage = () => {
                       ease: "easeInOut"
                     }}
                   >
-                    <IconButton
-                      icon={<FaPlay />}
-                      size="md"
-                      w={12}
-                      h={12}
-                      borderRadius="full"
-                      bg="white"
-                      color="primary.500"
-                      boxShadow="xl"
-                      _hover={{ bg: 'primary.50', color: 'primary.600' }}
-                      aria-label={t('landing.hero.playDemo')}
-                    />
                   </motion.div>
                   <Box
                     position="absolute"
@@ -421,12 +426,14 @@ const LandingPage = () => {
                     borderRadius="lg"
                     boxShadow="md"
                     className="glass-effect"
+                    aria-label="Course rating: 4.9 out of 5 stars"
+                    role="group"
                   >
-                    <HStack spacing={1}>
+                    <HStack spacing={1} align="center">
                       {[...Array(5)].map((_, i) => (
-                        <Icon key={i} as={FaStar} color="yellow.400" w={2} h={2} />
+                        <Icon key={i} as={FaStar} color="yellow.400" boxSize={3} />
                       ))}
-                      <Text fontSize="xs" fontWeight="600" ml={1}>4.9</Text>
+                      <Text fontSize="xs" fontWeight="semibold" ml={1} color="gray.700">4.9</Text>
                     </HStack>
                   </Box>
                 </Box>

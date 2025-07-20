@@ -44,6 +44,7 @@ import {
 } from 'react-icons/fa'
 
 import api from '../lib/api'
+import ReactGA from 'react-ga4';
 import toast from 'react-hot-toast'
 
 import { useLocation } from 'react-router-dom'
@@ -353,7 +354,12 @@ const Purchase = () => {
 
   const handlePurchase = async (e) => {
     e.preventDefault()
-    
+    ReactGA.event({
+      category: 'PurchasePage',
+      action: 'Click',
+      label: 'Purchase Button',
+      nonInteraction: false
+    });
     setIsLoading(true)
 
     try {
