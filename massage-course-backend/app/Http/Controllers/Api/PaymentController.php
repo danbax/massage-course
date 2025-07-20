@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTO\EmailDTO;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\User;
@@ -12,11 +13,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Services\EmailService;
 
 class PaymentController extends Controller
 {
     public function __construct(
-        private AllpayService $allpayService
+        private AllpayService $allpayService,
+        private EmailService $emailService
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -184,75 +187,60 @@ class PaymentController extends Controller
     {
         try {
             $data = $request->all();
-            Log::info('Allpay webhook received', $data);
+            Log::info('Allpay webhook received', ['data' => $data['status']]);
 
-            // Validate webhook secret key
-            $webhookSecret = $request->header('X-Webhook-Secret') ?? $request->input('webhook_secret');
-            if ($webhookSecret !== '875B3286184914E0AC9181080AB4ED30') {
-                Log::warning('Invalid webhook secret', ['received' => $webhookSecret]);
-                return response()->json(['error' => 'Invalid webhook secret'], 403);
-            }
+            if($data['status'] != 1) return response()->json(['message' => 'Webhook ignored for non-success status'], 200);
 
-            // Find payment
             $orderId = $data['order_id'] ?? null;
-            $status = $data['status'] ?? null;
-            $amount = $data['amount'] ?? null;
-            $payment = Payment::where('provider_transaction_id', $orderId)
-                ->where('payment_provider', 'allpay')
-                ->first();
-
-            if (!$payment) {
-                Log::warning('Payment not found for Allpay webhook', ['order_id' => $orderId]);
-                return response()->json(['error' => 'Payment not found'], 404);
+            if (!$orderId) {
+                Log::warning('Allpay webhook received without order_id', ['data' => $data]);
+                return response()->json(['error' => 'Missing order_id'], 400);
             }
 
-            // Only act on success
-            if ($status == '1' && $payment->status !== Payment::STATUS_SUCCEEDED) {
-                DB::beginTransaction();
-                // Get user data from payment_data
-                $userData = $payment->payment_data['user_data'] ?? null;
-                $user = $payment->user;
-                if (!$user && $userData) {
-                    $user = User::where('email', $userData['email'])->first();
-                    if (!$user) {
-                        $user = User::create([
-                            'name' => ($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? ''),
-                            'email' => $userData['email'],
-                            'phone' => $userData['phone'] ?? '',
-                            'password' => Hash::make(Str::random(12)),
-                            'email_verified_at' => now(),
-                        ]);
-                    }
-                    $payment->user_id = $user->id;
-                    $payment->save();
-                }
-                $payment->update([
-                    'status' => Payment::STATUS_SUCCEEDED,
-                    'processed_at' => now(),
-                    'payment_data' => array_merge($payment->payment_data ?? [], [
-                        'webhook_data' => $data,
-                        'card_mask' => $data['card_mask'] ?? null,
-                        'card_brand' => $data['card_brand'] ?? null,
-                        'foreign_card' => $data['foreign_card'] ?? null,
-                        'receipt' => $data['receipt'] ?? null
-                    ])
-                ]);
-                $user->update(['has_course_access' => true]);
-                DB::commit();
+            $payment = Payment::where('provider_transaction_id', $orderId)->first();
+            
+            Log::info('User', [$payment['payment_data']['user_data']]);
+        
 
-                // Generate login token
-                $token = $user->createToken('autologin')->plainTextToken;
+            Log::info('Allpay webhook payment found', [
+                'email' => $payment->payment_data['user_data']['email'] ?? null,
+                'phone' => $payment->payment_data['user_data']['phone'] ?? null
+            ]);
 
-                return response()->json([
-                    'status' => 'success',
-                    'user_id' => $user->id,
-                    'token' => $token,
-                    'redirect' => '/app/courses'
-                ]);
-            }
+            $email = $payment->payment_data['user_data']['email'];
+            $phone = $payment->payment_data['user_data']['phone'] ?? null;
+            $first_name = $payment->payment_data['user_data']['first_name'] ?? '';
+            $last_name = $payment->payment_data['user_data']['last_name'] ?? '';
 
-            // Default: just process webhook as before
-            $this->allpayService->processWebhook($data);
+            $user = User::create([
+                'email' => $email,
+                'phone' => $phone,
+                'name' => $first_name . ' ' . $last_name,
+                'password' => Hash::make(Str::random(16)),
+                'has_course_access' => true
+            ]);
+
+            // Generate set password token and link
+            $token = Str::random(64);
+            DB::table('password_reset_tokens')->updateOrInsert([
+                'email' => $email
+            ], [
+                'token' => $token,
+                'created_at' => now()
+            ]);
+            $resetUrl = url('/backend/reset-password?token=' . $token . '&email=' . urlencode($email));
+            $emailDTO = new EmailDTO([
+                'to' => $email,
+                'subject' => 'Welcome! Set Your Password for Massage Course',
+                'templateVars' => [
+                    'resetUrl' => $resetUrl,
+                    'userEmail' => $email
+                ]
+            ]);
+
+            
+            $this->emailService->sendEmail($emailDTO);
+
             return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
             Log::error('Allpay webhook error: ' . $e->getMessage(), [

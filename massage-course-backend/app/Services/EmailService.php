@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\DTO\EmailDTO;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Log;
 
 class EmailService
 {
@@ -21,7 +22,7 @@ class EmailService
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => [
-                'from' => 'MayaBOT <no-reply@massagecourse.academy>',
+                'from' => 'Massage Academy <no-reply@massagecourse.academy>',
                 'to' => $emailData->to,
                 'subject' => $emailData->subject,
                 'html' => $template
@@ -30,7 +31,15 @@ class EmailService
                 'Authorization: Basic YXBpOjQ2Y2QzYmM2ODZhNzI1MWM0Yjg3ZGZiZjEzZmZjYjVhLTE4MTQ0OWFhLWVjN2I3MDVj'
             ],
         ]);
-        curl_exec($curl);
+
+        $response = curl_exec($curl);
+        Log::info('Email sent', [
+            'to' => $emailData->to,
+            'subject' => $emailData->subject,
+            'response' => $response
+        ]);
+
         curl_close($curl);
+
     }
 }

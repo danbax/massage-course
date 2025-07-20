@@ -449,14 +449,14 @@ const Purchase = () => {
       if (paymentStep === 'payment' && showPaymentIframe && iframeUrl) {
         return (
           <VStack spacing={4} w="full">
-            <Box w="full" h="280px" borderRadius="lg" overflow="hidden" border="1px solid" borderColor="blue.200" position="relative">
+            <Box w="full" h="230px" borderRadius="lg" overflow="hidden" border="1px solid" borderColor="blue.200" position="relative">
               {isIframeLoading && (
                 <Flex
                   position="absolute"
                   top={0}
                   left={0}
                   w="full"
-                  h="280px"
+                  h="230px"
                   align="center"
                   justify="center"
                   bg="whiteAlpha.900"
@@ -473,7 +473,7 @@ const Purchase = () => {
                 src={iframeUrl}
                 title="Allpay Payment"
                 width="100%"
-                height="280px"
+                height="230px"
                 style={{ border: 'none', display: isIframeLoading ? 'none' : 'block' }}
                 allow="payment; camera; microphone; geolocation"
                 sandbox="allow-scripts allow-forms allow-same-origin allow-top-navigation allow-popups"

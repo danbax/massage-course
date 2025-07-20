@@ -11,14 +11,33 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CloudinaryController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+use Illuminate\Http\Request;
+use App\Services\EmailService;
+use App\DTO\EmailDTO;
+
+
+Route::post('test-email', function(Request $request) {
+    $request->validate([
+        'to' => 'required|email',
+        'subject' => 'required|string',
+        'templateVars' => 'nullable|array',
+    ]);
+    $emailDTO = new EmailDTO([
+        'to' => $request->input('to'),
+        'subject' => $request->input('subject'),
+        'templateVars' => $request->input('templateVars', [])
+    ]);
+    app(EmailService::class)->sendEmail($emailDTO);
+    return response()->json(['message' => 'Email sent']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
-    Route::post('password/forgot', [ForgotPasswordController::class, 'forgot']);
-    Route::post('password/reset', [ForgotPasswordController::class, 'reset']);
+    Route::post('/password/forgot', [ForgotPasswordController::class, 'forgot']);
+    Route::post('/password/reset', [ForgotPasswordController::class, 'reset']);
 });
 
 Route::get('certificates/verify/{code}', [CertificateController::class, 'verify'])
@@ -142,7 +161,7 @@ Route::prefix('payments')->group(function () {
     Route::post('/{payment}/refund', [PaymentController::class, 'requestRefund']);
     
     // Webhook routes (no auth middleware - webhooks come from external services)
-    Route::post('/ ', [PaymentController::class, 'handleAllpayWebhook']);
+    Route::post('/allpay/webhook ', [PaymentController::class, 'handleAllpayWebhook']);
     
         Route::get('/', [PaymentController::class, 'index']);
         Route::post('/confirm', [PaymentController::class, 'confirmPayment']);

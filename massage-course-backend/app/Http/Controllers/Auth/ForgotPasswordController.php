@@ -22,24 +22,24 @@ class ForgotPasswordController extends Controller
             return response()->json(['error' => 'Invalid email'], 422);
         }
         $email = $request->input('email');
-        $token = Str::random(64);
-        DB::table('password_resets')->updateOrInsert([
-            'email' => $email
-        ], [
-            'token' => $token,
-            'created_at' => now()
-        ]);
-        $resetUrl = url('/reset-password?token=' . $token . '&email=' . urlencode($email));
-        $emailData = new EmailDTO([
-            'to' => $email,
+        $token = Str::random(60);
+        // Store token in remember_token column
+        $user = User::where('email', $email)->first();
+        $user->remember_token = Hash::make($token);
+        $user->save();
+
+        // Send email with token
+        $emailDTO = new EmailDTO([
+            'to' => $user->email,
             'subject' => 'Password Reset Request',
             'templateVars' => [
-                'resetUrl' => $resetUrl,
-                'userEmail' => $email
+                'token' => $token,
+                'user' => $user
             ]
         ]);
-        app(EmailService::class)->sendEmail($emailData);
-        return response()->json(['message' => 'Reset link sent']);
+        app(EmailService::class)->sendEmail($emailDTO);
+
+        return response()->json(['message' => 'Password reset email sent']);
     }
 
     public function reset(Request $request)
@@ -55,12 +55,16 @@ class ForgotPasswordController extends Controller
         $email = $request->input('email');
         $token = $request->input('token');
         $password = $request->input('password');
-        $reset = DB::table('password_resets')->where('email', $email)->where('token', $token)->first();
-        if (!$reset) {
-            return response()->json(['error' => 'Invalid token'], 400);
+        $user = User::where('email', $email)->first();
+        if (!$user || !$user->remember_token || !Hash::check($request->token, $user->remember_token)) {
+            return response()->json(['message' => 'Invalid or expired token'], 400);
         }
-        User::where('email', $email)->update(['password' => Hash::make($password)]);
-        DB::table('password_resets')->where('email', $email)->delete();
-        return response()->json(['message' => 'Password reset successful']);
+
+        $user->password = Hash::make($password);
+        // Clear the token after successful reset
+        $user->remember_token = null;
+        $user->save();
+
+        return response()->json(['message' => 'Password has been reset']);
     }
 }

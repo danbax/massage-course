@@ -33,7 +33,8 @@ class AllpayService
         $this->apiKey = $apiKey;
         $this->apiUrl = config('services.allpay.api_url', 'https://allpay.to/app/?show=getpayment&mode=api8');
         $this->notificationUrl = config('app.url') . '/backend/api/allpay/webhook';
-        $this->successUrl = config('app.frontend_url', config('app.url')) . '/#/signin';
+        //$this->successUrl = config('app.frontend_url', config('app.url')) . '/#/signin';
+        $this->successUrl = config('app.url') . '/backend/api/allpay/webhook';
         $this->backUrl = config('app.frontend_url', config('app.url')) . '/purchase';
     }
 

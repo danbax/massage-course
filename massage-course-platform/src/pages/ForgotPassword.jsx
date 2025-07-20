@@ -16,6 +16,7 @@ import {
   Image
 } from '@chakra-ui/react'
 import iconImage from '../assets/icon.png'
+import api from '../lib/api';
 
 const ForgotPassword = () => {
   const navigate = useNavigate()
@@ -29,23 +30,17 @@ const ForgotPassword = () => {
   const onSubmit = async (data) => {
     setIsSubmitting(true)
     try {
-      const response = await fetch('/api/auth/password/forgot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: data.email })
-      })
-      const result = await response.json()
-      if (response.ok) {
-        toast.success('Password reset link sent to your email.')
+      // Use API client to ensure correct backend URL
+      const result = await api.post('/auth/password/forgot', { email: data.email });
+      if (!result || result.error) {
+        toast.error(result?.message || 'Failed to send reset link.');
       } else {
-        toast.error(result.message || 'Failed to send reset link.')
+        toast.success('Password reset link sent to your email.');
       }
     } catch (err) {
-      toast.error('Network error. Please try again.')
+      toast.error('Network error. Please try again.');
     }
-    setIsSubmitting(false)
+    setIsSubmitting(false);
   }
 
   return (
